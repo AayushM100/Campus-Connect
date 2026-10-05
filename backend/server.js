@@ -1,13 +1,17 @@
 // =====================================================
-// 1. IMPORT PACKAGES
+// 1. IMPORT PACKAGES & CONFIG
 // =====================================================
+
+const path = require("path");
+const fs = require("fs");
+
+// Load environment variables from root or backend directory
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+require("dotenv").config();
 
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
-
-const fs = require("fs");
-const path = require("path");
 
 
 // =====================================================
@@ -20,7 +24,7 @@ const PORT = Number(process.env.PORT || 3000);
 
 
 // =====================================================
-// 3. ENABLE CORS + JSON
+// 3. ENABLE CORS + JSON + URLENCODED
 // =====================================================
 
 app.use(cors());
@@ -29,48 +33,48 @@ app.use(express.json({
     limit: "10mb"
 }));
 
+app.use(express.urlencoded({
+    extended: true,
+    limit: "10mb"
+}));
+
 
 // =====================================================
-// 4. CONNECT TO MYSQL
+// 4. CONNECT TO MYSQL (CONNECTION POOL FOR PRODUCTION)
 // =====================================================
 
-const db = mysql.createConnection({
-
+const poolConfig = {
     host: process.env.DB_HOST || "localhost",
-
-    port: Number(
-        process.env.DB_PORT || 3307
-    ),
-
+    port: Number(process.env.DB_PORT || 3307),
     user: process.env.DB_USER || "root",
-
     password: process.env.DB_PASSWORD || "",
+    database: process.env.DB_NAME || "campusconnect",
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+};
 
-    database:
-        process.env.DB_NAME || "campusconnect"
+// Enable SSL if specified in environment
+if (process.env.DB_SSL === "true" || process.env.DB_SSL === "1") {
+    poolConfig.ssl = {
+        rejectUnauthorized: false
+    };
+}
 
-});
+const db = mysql.createPool(poolConfig);
 
 
 // =====================================================
-// LOST & FOUND ROUTES
+// 5. TEST MYSQL CONNECTION POOL
 // =====================================================
 
-const lostFoundRoutes =
-    require("./routes/lostfound");
-
-
-// =====================================================
-// 5. TEST MYSQL CONNECTION
-// =====================================================
-
-db.connect(function(error) {
+db.getConnection(function(error, connection) {
 
     if (error) {
 
         console.log(
             "MySQL connection failed:",
-            error
+            error.message || error
         );
 
         return;
@@ -78,8 +82,10 @@ db.connect(function(error) {
     }
 
     console.log(
-        "MySQL connected successfully!"
+        "MySQL connected successfully via pool!"
     );
+
+    connection.release();
 
 });
 
@@ -98,6 +104,14 @@ app.use(function(req, res, next) {
 
 
 // =====================================================
+// LOST & FOUND ROUTES
+// =====================================================
+
+const lostFoundRoutes =
+    require("./routes/lostfound");
+
+
+// =====================================================
 // LOST & FOUND API
 // =====================================================
 
@@ -108,266 +122,113 @@ app.use(
 
 
 // =====================================================
-// 6. LOST & FOUND FRONTEND
+// 6. PATH CONFIGURATION FOR FULL CAMPUSCONNECT SITE
 // =====================================================
 
-// Your project structure should be:
-//
-// Campus-Connect
-// │
-// ├── backend
-// │   ├── server.js
-// │   └── routes
-// │
-// └── lost_and_found
-//     ├── lost.html
-//     ├── lost-items.html
-//     ├── found-items.html
-//     ├── browse.html
-//     ├── lost.css
-//     ├── logo.png
-//     └── uploads
-//
+const rootPath =
+    path.join(__dirname, "..");
 
 const frontendPath =
-    path.join(
-        __dirname,
-        "..",
-        "lost_and_found"
-    );
+    path.join(rootPath, "lost_and_found");
+
+const canteenPath =
+    path.join(rootPath, "canteen");
+
+const mainPath =
+    path.join(rootPath, "Main");
+
+const foodImagesFolder =
+    path.join(__dirname, "food-images");
+
+const uploadsFolder =
+    path.join(frontendPath, "uploads");
 
 
 // =====================================================
-// CHECK FRONTEND FOLDER
+// HEALTH CHECK
 // =====================================================
 
-console.log(
-    "Lost & Found frontend path:",
-    frontendPath
-);
-
-
-if (!fs.existsSync(frontendPath)) {
-
-    console.log(
-        "WARNING: lost_and_found folder was NOT found."
-    );
-
-    console.log(
-        "Expected folder:",
-        frontendPath
-    );
-
-} else {
-
-    console.log(
-        "Lost & Found frontend folder found!"
-    );
-
-}
-
-
-// =====================================================
-// SERVE LOST & FOUND FILES
-// =====================================================
-
-app.use(
-    express.static(frontendPath)
-);
-
-
-// =====================================================
-// ALSO SUPPORT /lost_and_found/ URL
-// =====================================================
-
-app.use(
-    "/lost_and_found",
-    express.static(frontendPath)
-);
-
-
-// =====================================================
-// HOME PAGE
-// =====================================================
-
-app.get("/", function(req, res) {
-
-    res.sendFile(
-        path.join(
-            frontendPath,
-            "lost.html"
-        )
-    );
-
+app.get("/health", function(req, res) {
+    res.json({
+        status: "ok",
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
 });
 
 
 // =====================================================
-// EXPLICIT LOST & FOUND PAGES
+// SERVE STATIC FILES
 // =====================================================
 
-// Home
-app.get(
+// Serve root static files (index.html, landing.html, logo.png, etc.)
+app.use(express.static(rootPath));
+
+// Serve sub-apps as static directories
+app.use("/Main", express.static(mainPath));
+app.use("/canteen", express.static(canteenPath));
+app.use("/lost_and_found", express.static(frontendPath));
+app.use("/food-images", express.static(foodImagesFolder));
+app.use("/uploads", express.static(uploadsFolder));
+app.use("/lost_and_found/uploads", express.static(uploadsFolder));
+
+
+// =====================================================
+// EXPLICIT PAGE ROUTES & PHP ALIASES
+// =====================================================
+
+// Main campus home
+app.get(["/", "/index.html"], function(req, res) {
+    res.sendFile(path.join(rootPath, "index.html"));
+});
+
+app.get("/landing.html", function(req, res) {
+    res.sendFile(path.join(rootPath, "landing.html"));
+});
+
+// Lost & Found Pages + PHP Aliases
+app.get([
+    "/lost",
+    "/lost_and_found",
+    "/lost_and_found/",
     "/lost_and_found/lost.html",
-    function(req, res) {
+    "/lost_and_found/lost.php",
+    "/lost_and_found/reportlostitem.php",
+    "/lost_and_found/reportfounditem.php"
+], function(req, res) {
+    res.sendFile(path.join(frontendPath, "lost.html"));
+});
 
-        res.sendFile(
-            path.join(
-                frontendPath,
-                "lost.html"
-            )
-        );
-
-    }
-);
-
-
-// Lost Items
-app.get(
+app.get([
     "/lost_and_found/lost-items.html",
-    function(req, res) {
+    "/lost_and_found/lost-items.php"
+], function(req, res) {
+    res.sendFile(path.join(frontendPath, "lost-items.html"));
+});
 
-        res.sendFile(
-            path.join(
-                frontendPath,
-                "lost-items.html"
-            )
-        );
-
-    }
-);
-
-
-// Found Items
-app.get(
+app.get([
     "/lost_and_found/found-items.html",
-    function(req, res) {
+    "/lost_and_found/found-items.php"
+], function(req, res) {
+    res.sendFile(path.join(frontendPath, "found-items.html"));
+});
 
-        res.sendFile(
-            path.join(
-                frontendPath,
-                "found-items.html"
-            )
-        );
-
-    }
-);
-
-
-// Browse
-app.get(
+app.get([
     "/lost_and_found/browse.html",
-    function(req, res) {
+    "/lost_and_found/browse.php"
+], function(req, res) {
+    res.sendFile(path.join(frontendPath, "browse.html"));
+});
 
-        res.sendFile(
-            path.join(
-                frontendPath,
-                "browse.html"
-            )
-        );
+// Canteen Pages
+app.get(["/canteen", "/canteen/"], function(req, res) {
+    res.sendFile(path.join(canteenPath, "index.html"));
+});
 
-    }
-);
-
-
-// =====================================================
-// 7. GET MENU FROM MYSQL
-// =====================================================
-
-app.get(
-    "/api/menu/:canteen",
-    function(req, res) {
-
-        const canteen =
-            req.params.canteen;
-
-        let tableName;
-
-
-        // Decide which MySQL table to use
-
-        if (canteen === "cafeteria") {
-
-            tableName =
-                "campus_cafeteria";
-
-        }
-
-        else if (canteen === "timeless") {
-
-            tableName =
-                "cafe_timeless";
-
-        }
-
-        else if (canteen === "nescafe") {
-
-            tableName =
-                "nescafe";
-
-        }
-
-        else {
-
-            return res.status(400).json({
-
-                error:
-                    "Invalid canteen"
-
-            });
-
-        }
-
-
-        // Get menu items from MySQL
-
-        const query = `
-
-            SELECT
-                item_id,
-                item_name,
-                category,
-                price,
-                availability,
-                description
-
-            FROM ${tableName}
-
-        `;
-
-
-        db.query(
-            query,
-            function(error, results) {
-
-                if (error) {
-
-                    console.log(
-                        "Database query failed:",
-                        error
-                    );
-
-                    return res.status(500).json({
-
-                        error:
-                            "Could not fetch menu"
-
-                    });
-
-                }
-
-
-                res.json(results);
-
-            }
-        );
-
-    }
-);
 
 
 // =====================================================
-// ALL CANTEENS MENU
+// 7. GET ALL CANTEENS MENU (MUST BE BEFORE :canteen)
 // =====================================================
 
 app.get(
@@ -554,6 +415,103 @@ app.get(
 
 
 // =====================================================
+// GET MENU FOR SPECIFIC CANTEEN
+// =====================================================
+
+app.get(
+    "/api/menu/:canteen",
+    function(req, res) {
+
+        const canteen =
+            req.params.canteen;
+
+        let tableName;
+
+
+        // Decide which MySQL table to use
+
+        if (canteen === "cafeteria") {
+
+            tableName =
+                "campus_cafeteria";
+
+        }
+
+        else if (canteen === "timeless") {
+
+            tableName =
+                "cafe_timeless";
+
+        }
+
+        else if (canteen === "nescafe") {
+
+            tableName =
+                "nescafe";
+
+        }
+
+        else {
+
+            return res.status(400).json({
+
+                error:
+                    "Invalid canteen"
+
+            });
+
+        }
+
+
+        // Get menu items from MySQL
+
+        const query = `
+
+            SELECT
+                item_id,
+                item_name,
+                category,
+                price,
+                availability,
+                description
+
+            FROM ${tableName}
+
+        `;
+
+
+        db.query(
+            query,
+            function(error, results) {
+
+                if (error) {
+
+                    console.log(
+                        "Database query failed:",
+                        error
+                    );
+
+                    return res.status(500).json({
+
+                        error:
+                            "Could not fetch menu"
+
+                    });
+
+                }
+
+
+                res.json(results);
+
+            }
+        );
+
+    }
+);
+
+
+
+// =====================================================
 // AI FOOD IMAGE GENERATOR
 // =====================================================
 
@@ -729,26 +687,8 @@ app.get(
 
 
 // =====================================================
-// AI FOOD IMAGE STORAGE
+// CREATE FOOD IMAGE FOLDER IF MISSING
 // =====================================================
-
-const foodImagesFolder =
-    path.join(
-        __dirname,
-        "food-images"
-    );
-
-
-// =====================================================
-// MAKE FOOD IMAGES ACCESSIBLE
-// =====================================================
-
-app.use(
-    "/food-images",
-    express.static(
-        foodImagesFolder
-    )
-);
 
 
 // =====================================================
@@ -777,6 +717,7 @@ if (
 
 app.listen(
     PORT,
+    "0.0.0.0",
     function() {
 
         console.log(

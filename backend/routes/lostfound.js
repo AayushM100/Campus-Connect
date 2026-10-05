@@ -2,12 +2,13 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const cloudinary = require("cloudinary").v2;
 
 const router = express.Router();
 
 
 // =====================================================
-// IMAGE UPLOAD FOLDER
+// IMAGE UPLOAD FOLDER (LOCAL FALLBACK)
 // =====================================================
 
 const uploadFolder = path.join(
@@ -32,52 +33,58 @@ if (!fs.existsSync(uploadFolder)) {
 
 
 // =====================================================
-// MULTER STORAGE
+// CLOUDINARY CONFIGURATION (PERSISTENT CLOUD STORAGE)
 // =====================================================
 
-const storage = multer.diskStorage({
+function isCloudinaryConfigured() {
+    return Boolean(
+        process.env.CLOUDINARY_CLOUD_NAME &&
+        process.env.CLOUDINARY_API_KEY &&
+        process.env.CLOUDINARY_API_SECRET
+    );
+}
 
-    destination: function(req, file, cb) {
+if (isCloudinaryConfigured()) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true
+    });
+    console.log("Cloudinary persistent image storage configured!");
+} else {
+    console.log("Using local filesystem image storage (Cloudinary env not set)");
+}
 
-        cb(
-            null,
-            uploadFolder
-        );
-
-    },
-
-    filename: function(req, file, cb) {
-
-        const extension =
-            path.extname(
-                file.originalname
-            ).toLowerCase();
-
-        const baseName =
-            path.basename(
-                file.originalname,
-                extension
-            )
-            .replace(
-                /[^a-zA-Z0-9-_]/g,
-                "_"
-            )
+function uploadToCloudinary(buffer, originalname) {
+    return new Promise(function(resolve, reject) {
+        const extension = path.extname(originalname).toLowerCase();
+        const baseName = path.basename(originalname, extension)
+            .replace(/[^a-zA-Z0-9-_]/g, "_")
             .toLowerCase();
+        const publicId = baseName + "_" + Date.now();
 
-        const uniqueName =
-            baseName +
-            "_" +
-            Date.now() +
-            extension;
-
-        cb(
-            null,
-            uniqueName
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: "campusconnect/lost_and_found",
+                public_id: publicId,
+                resource_type: "image"
+            },
+            function(error, result) {
+                if (error) return reject(error);
+                resolve(result.secure_url);
+            }
         );
+        uploadStream.end(buffer);
+    });
+}
 
-    }
 
-});
+// =====================================================
+// MULTER STORAGE (IN-MEMORY BUFFER FOR DUAL STORAGE)
+// =====================================================
+
+const storage = multer.memoryStorage();
 
 
 // =====================================================
@@ -712,7 +719,7 @@ router.get(
 router.post(
     "/",
     upload.single("image"),
-    function(req, res) {
+    async function(req, res) {
 
 
         // =================================================
@@ -756,19 +763,6 @@ router.post(
             description === ""
         ) {
 
-            if (
-                req.file &&
-                req.file.path
-            ) {
-
-                fs.unlink(
-                    req.file.path,
-                    function() {}
-                );
-
-            }
-
-
             return res.status(400).json({
 
                 error:
@@ -788,19 +782,6 @@ router.post(
             status !== "found"
         ) {
 
-            if (
-                req.file &&
-                req.file.path
-            ) {
-
-                fs.unlink(
-                    req.file.path,
-                    function() {}
-                );
-
-            }
-
-
             return res.status(400).json({
 
                 error:
@@ -812,37 +793,116 @@ router.post(
 
 
         // =================================================
-        // DEFAULT VALUES
+        // OPTIONAL / DEFAULT VALUES
         // =================================================
 
         const person_name =
-            "Campus Student";
+            String(
+                req.body.person_name || "Campus Student"
+            ).trim();
 
 
         const roll_number =
-            "N/A";
+            String(
+                req.body.roll_number || "N/A"
+            ).trim();
 
 
         const contact_number =
-            "N/A";
+            String(
+                req.body.contact_number || "N/A"
+            ).trim();
 
 
         // =================================================
-        // IMAGE PATH
+        // IMAGE PATH (CLOUDINARY OR LOCAL DISK)
         // =================================================
 
         let imagePath = "";
 
+        if (req.file) {
 
-        if (
-            req.file
-        ) {
+            if (isCloudinaryConfigured()) {
 
-            imagePath =
-                "uploads/items/" +
-                req.file.filename;
+                try {
+
+                    imagePath =
+                        await uploadToCloudinary(
+                            req.file.buffer,
+                            req.file.originalname
+                        );
+
+                    console.log(
+                        "Uploaded image to Cloudinary:",
+                        imagePath
+                    );
+
+                } catch (cloudError) {
+
+                    console.error(
+                        "Cloudinary upload failed:",
+                        cloudError
+                    );
+
+                    return res.status(500).json({
+
+                        error:
+                            "Could not upload image to cloud storage: " +
+                            (cloudError.message || cloudError)
+
+                    });
+
+                }
+
+            } else {
+
+                // Fallback to local disk
+                const extension =
+                    path.extname(
+                        req.file.originalname
+                    ).toLowerCase();
+
+                const baseName =
+                    path.basename(
+                        req.file.originalname,
+                        extension
+                    )
+                    .replace(
+                        /[^a-zA-Z0-9-_]/g,
+                        "_"
+                    )
+                    .toLowerCase();
+
+                const uniqueName =
+                    baseName +
+                    "_" +
+                    Date.now() +
+                    extension;
+
+                const fullLocalPath =
+                    path.join(
+                        uploadFolder,
+                        uniqueName
+                    );
+
+                fs.writeFileSync(
+                    fullLocalPath,
+                    req.file.buffer
+                );
+
+                imagePath =
+                    "uploads/items/" +
+                    uniqueName;
+
+                console.log(
+                    "Saved image to local disk:",
+                    imagePath
+                );
+
+            }
 
         }
+
 
 
         // =================================================
