@@ -39,364 +39,7 @@ let selectedCanteen = "all";
 
 let selectedCategory = "all";
 
-// =====================================================
-// CART
-// =====================================================
 
-let cart = JSON.parse(
-    localStorage.getItem("campusBitesCart")
-) || [];
-
-
-// Save cart
-function saveCart() {
-
-    localStorage.setItem(
-        "campusBitesCart",
-        JSON.stringify(cart)
-    );
-
-}
-
-
-// =====================================================
-// ADD ITEM TO CART
-// =====================================================
-
-function addToCart(item, button) {
-
-    // Check whether item already exists
-    const existingItem = cart.find(function (cartItem) {
-
-        return (
-            cartItem.item_id === item.item_id &&
-            cartItem.canteen === item.canteen
-        );
-
-    });
-
-
-    if (existingItem) {
-
-        existingItem.quantity += 1;
-
-    } else {
-
-        cart.push({
-
-            item_id: item.item_id,
-
-            item_name: item.item_name,
-
-            price: Number(item.price),
-
-            category: item.category,
-
-            canteen: item.canteen,
-
-            quantity: 1
-
-        });
-
-    }
-
-
-    saveCart();
-
-    updateCartCount();
-
-
-    // Change button appearance
-    button.textContent = "✓ Added";
-
-    button.classList.add("added");
-
-
-    // Return button to normal after a moment
-    setTimeout(function () {
-
-        button.innerHTML =
-            "🛒 &nbsp; Add to Cart";
-
-        button.classList.remove("added");
-
-    }, 1200);
-
-
-    console.log(
-        "Cart:",
-        cart
-    );
-
-}
-
-
-// =====================================================
-// CART COUNT
-// =====================================================
-
-function updateCartCount() {
-
-    let totalItems = 0;
-
-
-    cart.forEach(function (item) {
-
-        totalItems += item.quantity;
-
-    });
-
-
-    let cartCount =
-        document.querySelector("#cartCount");
-
-
-    if (!cartCount) {
-
-        createCartButton();
-
-        cartCount =
-            document.querySelector("#cartCount");
-
-    }
-
-
-    cartCount.textContent =
-        totalItems;
-
-}
-
-
-// =====================================================
-// CREATE CART BUTTON
-// =====================================================
-
-function createCartButton() {
-
-    const cartButton =
-        document.createElement("button");
-
-
-    cartButton.id =
-        "cartButton";
-
-
-    cartButton.innerHTML = `
-        🛒
-        <span id="cartCount">0</span>
-    `;
-
-
-    cartButton.addEventListener(
-        "click",
-        function () {
-
-            showCart();
-
-        }
-    );
-
-
-    document.body.appendChild(
-        cartButton
-    );
-
-}
-
-
-// =====================================================
-// SHOW CART
-// =====================================================
-
-function showCart() {
-
-    let cartHTML = "";
-
-
-    if (cart.length === 0) {
-
-        cartHTML = `
-            <div class="empty-cart">
-                <div>🛒</div>
-                <h3>Your cart is empty</h3>
-                <p>Add some delicious food to get started.</p>
-            </div>
-        `;
-
-    } else {
-
-        cart.forEach(function (item) {
-
-            cartHTML += `
-
-                <div class="cart-item">
-
-                    <div>
-                        <strong>
-                            ${item.item_name}
-                        </strong>
-
-                        <small>
-                            ${canteenNames[item.canteen]}
-                        </small>
-
-                        <span>
-                            ₹${item.price} × ${item.quantity}
-                        </span>
-                    </div>
-
-                    <button
-                        class="remove-cart-item"
-                        data-id="${item.item_id}"
-                        data-canteen="${item.canteen}">
-
-                        ✕
-
-                    </button>
-
-                </div>
-
-            `;
-
-        });
-
-
-        const total =
-            cart.reduce(function (sum, item) {
-
-                return sum +
-                    item.price *
-                    item.quantity;
-
-            }, 0);
-
-
-        cartHTML += `
-
-            <div class="cart-total">
-
-                <strong>
-                    Total
-                </strong>
-
-                <strong>
-                    ₹${total}
-                </strong>
-
-            </div>
-
-            <button
-                class="checkout-button">
-
-                Proceed to Checkout
-
-            </button>
-
-        `;
-
-    }
-
-
-    const overlay =
-        document.createElement("div");
-
-
-    overlay.id =
-        "cartOverlay";
-
-
-    overlay.innerHTML = `
-
-        <div class="cart-panel">
-
-            <div class="cart-header">
-
-                <h2>
-                    🛒 Your Cart
-                </h2>
-
-                <button id="closeCart">
-                    ✕
-                </button>
-
-            </div>
-
-            <div class="cart-content">
-
-                ${cartHTML}
-
-            </div>
-
-        </div>
-
-    `;
-
-
-    document.body.appendChild(
-        overlay
-    );
-
-
-    // Close cart
-    document
-        .querySelector("#closeCart")
-        .addEventListener(
-            "click",
-            function () {
-
-                overlay.remove();
-
-            }
-        );
-
-
-    // Remove item buttons
-    document
-        .querySelectorAll(
-            ".remove-cart-item"
-        )
-        .forEach(function (button) {
-
-            button.addEventListener(
-                "click",
-                function () {
-
-                    const id =
-                        Number(
-                            button.dataset.id
-                        );
-
-                    const canteen =
-                        button.dataset.canteen;
-
-
-                    cart =
-                        cart.filter(
-                            function (item) {
-
-                                return !(
-                                    item.item_id === id &&
-                                    item.canteen === canteen
-                                );
-
-                            }
-                        );
-
-
-                    saveCart();
-
-                    updateCartCount();
-
-                    overlay.remove();
-
-                    showCart();
-
-                }
-            );
-
-        });
-
-}
 
 
 // =====================================================
@@ -461,76 +104,76 @@ function loadAllMenus() {
     const requests = canteens.map(function (canteen) {
 
         return fetch(
-            "/api/menu/" + canteen
+            "http://localhost:3000/api/menu/" + canteen
         )
 
-            .then(function (response) {
+        .then(function (response) {
 
-                if (!response.ok) {
+            if (!response.ok) {
 
-                    throw new Error(
-                        "Could not load " + canteen
-                    );
+                throw new Error(
+                    "Could not load " + canteen
+                );
 
-                }
+            }
 
-                return response.json();
+            return response.json();
 
-            })
+        })
 
-            .then(function (data) {
+        .then(function (data) {
 
-                return data.map(function (item) {
+            return data.map(function (item) {
 
-                    return {
+                return {
 
-                        ...item,
+                    ...item,
 
-                        canteen: canteen
+                    canteen: canteen
 
-                    };
-
-                });
+                };
 
             });
+
+        });
 
     });
 
 
-    Promise.all(requests)
+Promise.all(requests)
 
-        .then(function (results) {
+    .then(function (results) {
 
-            allMenuItems =
-                results.flat();
-
-
-            console.log(
-                "All menu items:",
-                allMenuItems
-            );
+        allMenuItems =
+            results.flat();
 
 
-            createCategoryButtons();
-
-            displayMenu();
-
-        })
-
-
-        .catch(function (error) {
-
-            console.log(
-                "Menu loading error:",
-                error
-            );
+        console.log(
+            "All menu items:",
+            allMenuItems
+        );
 
 
-            showError(
-                "Unable to load menu. Make sure the backend is running."
-            );
+        createCategoryButtons();
 
-        });
+        displayMenu();
+
+    })
+
+
+    .catch(function (error) {
+
+        console.log(
+            "Menu loading error:",
+            error
+        );
+
+
+        showError(
+            "Unable to load menu. Make sure the backend is running."
+        );
+
+    });
 
 }
 
@@ -1211,11 +854,5 @@ function showError(message) {
 }
 
 
-// =====================================================
-// START
-// =====================================================
 
-createCartButton();
-
-updateCartCount();
 loadAllMenus();

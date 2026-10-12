@@ -27,6 +27,8 @@ app.use(cors());
 
 app.use(express.json());
 
+app.use("/food-images", express.static(path.join(__dirname, "food-images")));
+
 
 // ======================================================
 // MYSQL CONNECTION
@@ -102,6 +104,23 @@ app.get("/api/canteens", (req, res) => {
 
     res.json(canteens);
 
+});
+
+app.get("/api/menu", (req, res) => {
+    const sql = `
+        SELECT item_id, item_name, category, price, availability, description, 'cafeteria' AS canteen FROM campus_cafeteria
+        UNION ALL
+        SELECT item_id, item_name, category, price, availability, description, 'timeless' AS canteen FROM cafe_timeless
+        UNION ALL
+        SELECT item_id, item_name, category, price, availability, description, 'nescafe' AS canteen FROM nescafe
+    `;
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error("All menu query error:", err);
+            return res.status(500).json({ error: "Failed to fetch all menus" });
+        }
+        res.json(results);
+    });
 });
 
 
