@@ -72,10 +72,32 @@ function logDatabaseError(label, err) {
 
 // Use the pool for every query.
 // Do not manually close the pool while the server is running.
+const POOL_ERRORS = new Set([
+    "ECONNRESET",
+    "PROTOCOL_CONNECTION_LOST",
+    "EPIPE",
+    "ETIMEDOUT",
+    "ECONNREFUSED",
+    "ER_CON_COUNT_ERROR"
+]);
+
 async function query(sql, params = []) {
-    const [rows] = await db.execute(sql, params);
-    return rows;
-}
+    try {
+        const [rows] = await db.execute(sql, params);
+        return rows;
+    } catch (err) {
+        // Retry once if it's a connection-level error
+        if (POOL_ERRORS.has(err.code)) {
+            console.warn(
+                "Connection error, retrying:",
+                err.code
+            );
+            const [rows] = await db.execute(sql, params);
+            return rows;
+        }
+        throw err;
+    }
+}   
 
 // ======================================================
 // 3. CANTEEN CONFIGURATION
