@@ -13,8 +13,15 @@ const cors = require("cors");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const DB_NAME = "campus_canteen";
+const PORT = Number(process.env.PORT) || 3000;
+
+const DB_NAME = process.env.DB_NAME || "campus_canteen";
+const DB_PORT = Number(process.env.DB_PORT) || 3306;
+
+// Validate the database name before using it in SQL identifiers.
+if (!/^[a-zA-Z0-9_]+$/.test(DB_NAME)) {
+    throw new Error("Invalid DB_NAME configuration.");
+}
 
 app.use(cors());
 app.use(express.json());
@@ -25,33 +32,90 @@ app.use(
 );
 
 // ======================================================
-// 2. MYSQL CONNECTION
-// Uses only `db` throughout this file.
+// 2. MYSQL CONNECTION POOL
 // ======================================================
+
+const missingVariables = [
+    "DB_HOST",
+    "DB_USER",
+    "DB_PASSWORD"
+].filter((name) => !process.env[name]);
+
+if (missingVariables.length > 0) {
+    console.error(
+        "Missing Render database environment variables:",
+        missingVariables.join(", ")
+    );
+}
 
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: DB_NAME,
-    port: Number(process.env.DB_PORT || 3306),
+    port: DB_PORT,
     waitForConnections: true,
     connectionLimit: 10,
+    maxIdle: 5,
+    idleTimeout: 60000,
     queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
     ...(process.env.DB_SSL === "true"
         ? { ssl: { rejectUnauthorized: false } }
         : {})
 });
 
-db.query("SELECT DATABASE() AS databaseName", (err, rows) => {
-    if (err) {
-        console.error("MySQL connection failed:", err.message);
-        return;
-    }
+// Log useful errors without exposing database credentials.
+function logDatabaseError(label, err) {
+    console.error(label, {
+        code: err.code || "UNKNOWN",
+        errno: err.errno || null,
+        message: err.message || "No error message provided"
+    });
+}
 
-    console.log("MySQL connected successfully.");
-    console.log("DATABASE USED:", rows[0].databaseName);
-});
+// Retry the startup connectivity check if the database is temporarily
+// unavailable. This does not make invalid credentials or an unreachable
+// database work; it helps diagnose temporary connection failures.
+function checkDatabase(attempt = 1) {
+    db.getConnection((err, connection) => {
+        if (err) {
+            logDatabaseError("MySQL connection failed:", err);
+
+            if (attempt < 5) {
+                const delay = attempt * 5000;
+
+                console.log(
+                    `Retrying database connection in ${delay / 1000} seconds (attempt ${attempt + 1}/5).`
+                );
+
+                setTimeout(() => checkDatabase(attempt + 1), delay);
+            }
+
+            return;
+        }
+
+        connection.query(
+            "SELECT DATABASE() AS databaseName",
+            (queryErr, rows) => {
+                if (queryErr) {
+                    logDatabaseError("MySQL startup query failed:", queryErr);
+                } else {
+                    console.log("MySQL connected successfully.");
+                    console.log(
+                        "DATABASE USED:",
+                        rows[0].databaseName
+                    );
+                }
+
+                connection.release();
+            }
+        );
+    });
+}
+
+checkDatabase();
 
 // ======================================================
 // 3. CANTEEN CONFIGURATION
@@ -77,15 +141,19 @@ function getCanteen(id) {
 }
 
 function getVisitorId(body) {
-    return String(body?.visitorId ?? body?.visitor_id ?? "").trim();
+    return String(
+        body?.visitorId ?? body?.visitor_id ?? ""
+    ).trim();
 }
 
 function getItemId(body) {
-    return String(body?.item_id ?? body?.itemId ?? "").trim();
+    return String(
+        body?.item_id ?? body?.itemId ?? ""
+    ).trim();
 }
 
 // ======================================================
-// 4. COMMON SQL FOR ALL MENU ITEMS
+// 4. COMMON MENU SQL
 // ======================================================
 
 function menuUnionSql() {
@@ -98,31 +166,31 @@ function menuUnionSql() {
             availability,
             description,
             'cafeteria' AS canteen
-        FROM ${DB_NAME}.campus_cafeteria
+        FROM \`${DB_NAME}\`.campus_cafeteria
 
         UNION ALL
 
         SELECT
-            CAST(item_id AS CHAR),
+            CAST(item_id AS CHAR) AS item_id,
             item_name,
             category,
             price,
             availability,
             description,
-            'timeless'
-        FROM ${DB_NAME}.cafe_timeless
+            'timeless' AS canteen
+        FROM \`${DB_NAME}\`.cafe_timeless
 
         UNION ALL
 
         SELECT
-            CAST(item_id AS CHAR),
+            CAST(item_id AS CHAR) AS item_id,
             item_name,
             category,
             price,
             availability,
             description,
-            'nescafe'
-        FROM ${DB_NAME}.nescafe
+            'nescafe' AS canteen
+        FROM \`${DB_NAME}\`.nescafe
     `;
 }
 
@@ -137,23 +205,29 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-    db.query("SELECT 1 AS connected", (err) => {
-        if (err) {
-            return res.status(500).json({
-                status: "error",
-                error: err.message
+    db.query(
+        "SELECT DATABASE() AS databaseName",
+        (err, rows) => {
+            if (err) {
+                logDatabaseError("Health check database error:", err);
+
+                return res.status(503).json({
+                    status: "error",
+                    error: "Database connection failed",
+                    code: err.code || "UNKNOWN"
+                });
+            }
+
+            res.json({
+                status: "ok",
+                database: rows[0].databaseName
             });
         }
-
-        res.json({
-            status: "ok",
-            database: DB_NAME
-        });
-    });
+    );
 });
 
 // ======================================================
-// 6. GET ALL CANTEENS
+// 6. GET CANTEENS
 // ======================================================
 
 app.get("/api/canteens", (req, res) => {
@@ -172,7 +246,7 @@ app.get("/api/canteens", (req, res) => {
 app.get("/api/menu", (req, res) => {
     db.query(menuUnionSql(), (err, results) => {
         if (err) {
-            console.error("All menu query failed:", err.message);
+            logDatabaseError("All menu query failed:", err);
 
             return res.status(500).json({
                 error: "Failed to fetch all menu items",
@@ -205,13 +279,13 @@ app.get("/api/menu/:canteen", (req, res) => {
             price,
             availability,
             description
-        FROM ${DB_NAME}.${canteen.table}
+        FROM \`${DB_NAME}\`.\`${canteen.table}\`
         ORDER BY item_id
     `;
 
     db.query(sql, (err, results) => {
         if (err) {
-            console.error("Canteen menu query failed:", err.message);
+            logDatabaseError("Canteen menu query failed:", err);
 
             return res.status(500).json({
                 error: "Failed to fetch menu",
@@ -244,14 +318,14 @@ app.get("/api/item/:canteen/:id", (req, res) => {
             price,
             availability,
             description
-        FROM ${DB_NAME}.${canteen.table}
+        FROM \`${DB_NAME}\`.\`${canteen.table}\`
         WHERE item_id = ?
         LIMIT 1
     `;
 
     db.query(sql, [req.params.id], (err, results) => {
         if (err) {
-            console.error("Item query failed:", err.message);
+            logDatabaseError("Item query failed:", err);
 
             return res.status(500).json({
                 error: "Failed to fetch item",
@@ -277,7 +351,10 @@ app.get("/api/item/:canteen/:id", (req, res) => {
 
 app.post("/api/favourites", (req, res) => {
     const visitorId = getVisitorId(req.body);
-    const canteenId = String(req.body?.canteen || "").toLowerCase();
+    const canteenId = String(
+        req.body?.canteen || ""
+    ).toLowerCase();
+
     const itemId = getItemId(req.body);
     const canteen = getCanteen(canteenId);
 
@@ -295,14 +372,14 @@ app.post("/api/favourites", (req, res) => {
 
     const verifySql = `
         SELECT item_id
-        FROM ${DB_NAME}.${canteen.table}
+        FROM \`${DB_NAME}\`.\`${canteen.table}\`
         WHERE item_id = ?
         LIMIT 1
     `;
 
     db.query(verifySql, [itemId], (verifyErr, items) => {
         if (verifyErr) {
-            console.error("Favourite verification failed:", verifyErr.message);
+            logDatabaseError("Favourite verification failed:", verifyErr);
 
             return res.status(500).json({
                 error: "Could not verify menu item",
@@ -317,7 +394,7 @@ app.post("/api/favourites", (req, res) => {
         }
 
         const insertSql = `
-            INSERT IGNORE INTO ${DB_NAME}.food_favourites
+            INSERT IGNORE INTO \`${DB_NAME}\`.food_favourites
                 (visitor_id, canteen, item_id)
             VALUES (?, ?, ?)
         `;
@@ -327,7 +404,7 @@ app.post("/api/favourites", (req, res) => {
             [visitorId, canteenId, itemId],
             (err, result) => {
                 if (err) {
-                    console.error("Saving favourite failed:", err.message);
+                    logDatabaseError("Saving favourite failed:", err);
 
                     return res.status(500).json({
                         error: "Could not save favourite",
@@ -351,7 +428,9 @@ app.post("/api/favourites", (req, res) => {
 // ======================================================
 
 app.get("/api/favourites/:visitorId", (req, res) => {
-    const visitorId = String(req.params.visitorId || "").trim();
+    const visitorId = String(
+        req.params.visitorId || ""
+    ).trim();
 
     if (!visitorId || visitorId.length > 100) {
         return res.status(400).json({
@@ -361,13 +440,13 @@ app.get("/api/favourites/:visitorId", (req, res) => {
 
     const sql = `
         SELECT canteen, item_id
-        FROM ${DB_NAME}.food_favourites
+        FROM \`${DB_NAME}\`.food_favourites
         WHERE visitor_id = ?
     `;
 
     db.query(sql, [visitorId], (err, results) => {
         if (err) {
-            console.error("Loading favourites failed:", err.message);
+            logDatabaseError("Loading favourites failed:", err);
 
             return res.status(500).json({
                 error: "Could not load favourites",
@@ -382,12 +461,14 @@ app.get("/api/favourites/:visitorId", (req, res) => {
 // ======================================================
 // 12. REMOVE A FOOD FAVOURITE
 // DELETE /api/favourites
-// Body: { visitorId, canteen, item_id }
 // ======================================================
 
 app.delete("/api/favourites", (req, res) => {
     const visitorId = getVisitorId(req.body);
-    const canteenId = String(req.body?.canteen || "").toLowerCase();
+    const canteenId = String(
+        req.body?.canteen || ""
+    ).toLowerCase();
+
     const itemId = getItemId(req.body);
 
     if (
@@ -403,33 +484,36 @@ app.delete("/api/favourites", (req, res) => {
     }
 
     const sql = `
-        DELETE FROM ${DB_NAME}.food_favourites
+        DELETE FROM \`${DB_NAME}\`.food_favourites
         WHERE visitor_id = ?
           AND canteen = ?
           AND item_id = ?
     `;
 
-    db.query(sql, [visitorId, canteenId, itemId], (err, result) => {
-        if (err) {
-            console.error("Removing favourite failed:", err.message);
+    db.query(
+        sql,
+        [visitorId, canteenId, itemId],
+        (err, result) => {
+            if (err) {
+                logDatabaseError("Removing favourite failed:", err);
 
-            return res.status(500).json({
-                error: "Could not remove favourite",
-                details: err.message
+                return res.status(500).json({
+                    error: "Could not remove favourite",
+                    details: err.message
+                });
+            }
+
+            res.json({
+                success: true,
+                favourited: false,
+                removed: result.affectedRows > 0
             });
         }
-
-        res.json({
-            success: true,
-            favourited: false,
-            removed: result.affectedRows > 0
-        });
-    });
+    );
 });
 
 // ======================================================
 // 13. GET FAVOURITE COUNTS
-// GET /api/favourites/counts
 // ======================================================
 
 app.get("/api/favourites/counts", (req, res) => {
@@ -438,13 +522,13 @@ app.get("/api/favourites/counts", (req, res) => {
             canteen,
             item_id,
             COUNT(*) AS favourite_count
-        FROM ${DB_NAME}.food_favourites
+        FROM \`${DB_NAME}\`.food_favourites
         GROUP BY canteen, item_id
     `;
 
     db.query(sql, (err, results) => {
         if (err) {
-            console.error("Favourite counts failed:", err.message);
+            logDatabaseError("Favourite counts failed:", err);
 
             return res.status(500).json({
                 error: "Could not load favourite counts",
@@ -457,8 +541,7 @@ app.get("/api/favourites/counts", (req, res) => {
 });
 
 // ======================================================
-// 14. GET THE TOP FAVOURITED DISH
-// GET /api/favourites/top
+// 14. GET TOP FAVOURITED DISH
 // ======================================================
 
 app.get("/api/favourites/top", (req, res) => {
@@ -473,7 +556,7 @@ app.get("/api/favourites/top", (req, res) => {
                 canteen,
                 item_id,
                 COUNT(*) AS favourite_count
-            FROM ${DB_NAME}.food_favourites
+            FROM \`${DB_NAME}\`.food_favourites
             GROUP BY canteen, item_id
         ) AS f
           ON f.canteen = menu.canteen
@@ -485,7 +568,7 @@ app.get("/api/favourites/top", (req, res) => {
 
     db.query(sql, (err, results) => {
         if (err) {
-            console.error("Top favourite query failed:", err.message);
+            logDatabaseError("Top favourite query failed:", err);
 
             return res.status(500).json({
                 error: "Could not load top favourite",
@@ -505,10 +588,8 @@ app.get("/api/favourites/top", (req, res) => {
 
 // ======================================================
 // 15. CAMPUS PICKS
-// GET /api/campus-picks
 // Returns the two most-favourited dishes.
 // ======================================================
-
 
 app.get("/api/campus-picks", (req, res) => {
     const sql = `
@@ -517,7 +598,7 @@ app.get("/api/campus-picks", (req, res) => {
             COUNT(f.id) AS favourite_count
         FROM (${menuUnionSql()}) AS menu
 
-        INNER JOIN campus_canteen.food_favourites AS f
+        INNER JOIN \`${DB_NAME}\`.food_favourites AS f
           ON CONVERT(f.canteen USING utf8mb4)
                 COLLATE utf8mb4_unicode_ci
              =
@@ -548,7 +629,7 @@ app.get("/api/campus-picks", (req, res) => {
 
     db.query(sql, (err, results) => {
         if (err) {
-            console.error("Campus Picks query failed:", err.message);
+            logDatabaseError("Campus Picks query failed:", err);
 
             return res.status(500).json({
                 error: "Failed to load Campus Picks",
@@ -560,13 +641,10 @@ app.get("/api/campus-picks", (req, res) => {
     });
 });
 
-
 // ======================================================
 // 16. START SERVER
 // ======================================================
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(
-        `Campus Connect Canteens Backend running at http://localhost:${PORT}`
-    );
+    console.log(`Campus Connect Canteens Backend running on port ${PORT}`);
 });
