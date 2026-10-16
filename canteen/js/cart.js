@@ -35,7 +35,7 @@ function getCartCount() {
 
     let total = 0;
 
-    cart.forEach(function(item) {
+    cart.forEach(function (item) {
 
         total += item.quantity;
 
@@ -72,7 +72,7 @@ function updateCartCount() {
 function addToCart(item, button) {
 
     const existingItem =
-        cart.find(function(cartItem) {
+        cart.find(function (cartItem) {
 
             return (
                 cartItem.item_id === item.item_id &&
@@ -124,7 +124,7 @@ function addToCart(item, button) {
         button.classList.add("added");
 
 
-        setTimeout(function() {
+        setTimeout(function () {
 
             button.innerHTML =
                 "🛒 &nbsp; Add to Cart";
@@ -251,30 +251,26 @@ function showCart() {
     // EMPTY CART
     // =================================================
 
+
     if (cart.length === 0) {
-
         cartHTML = `
+        <div class="empty-cart">
+            <div aria-hidden="true">🛒</div>
 
-            <div class="empty-cart">
+            <h3>Your tummy called!</h3>
 
-                <div>
-                    🛒
-                </div>
+            <p>
+                Your cart is empty for now.
+                There are tasty campus favourites waiting for you.
+            </p>
 
-                <h3>
-                    Your cart is empty
-                </h3>
-
-                <p>
-                    Add some delicious food
-                    to get started.
-                </p>
-
-            </div>
-
-        `;
-
+            <p class="empty-cart-hint">
+                Add something to fill your tummy!
+            </p>
+        </div>
+    `;
     }
+
 
 
     // =================================================
@@ -283,7 +279,7 @@ function showCart() {
 
     else {
 
-        cart.forEach(function(item) {
+        cart.forEach(function (item) {
 
             cartHTML += `
 
@@ -297,8 +293,8 @@ function showCart() {
 
                         <small>
                             ${getCanteenName(
-                                item.canteen
-                            )}
+                item.canteen
+            )}
                         </small>
 
                         <span>
@@ -353,7 +349,7 @@ function showCart() {
 
         const total =
             cart.reduce(
-                function(sum, item) {
+                function (sum, item) {
 
                     return (
                         sum +
@@ -450,7 +446,7 @@ function showCart() {
         .querySelector("#closeCart")
         .addEventListener(
             "click",
-            function() {
+            function () {
 
                 overlay.remove();
 
@@ -466,11 +462,11 @@ function showCart() {
         .querySelectorAll(
             ".quantity-button"
         )
-        .forEach(function(button) {
+        .forEach(function (button) {
 
             button.addEventListener(
                 "click",
-                function() {
+                function () {
 
                     const id =
                         Number(
@@ -490,7 +486,7 @@ function showCart() {
 
                     const item =
                         cart.find(
-                            function(cartItem) {
+                            function (cartItem) {
 
                                 return (
                                     cartItem.item_id === id &&
@@ -536,7 +532,7 @@ function showCart() {
 
                             cart =
                                 cart.filter(
-                                    function(cartItem) {
+                                    function (cartItem) {
 
                                         return !(
                                             cartItem.item_id === id &&
@@ -603,7 +599,7 @@ function getCanteenName(canteen) {
 
 document.addEventListener(
     "DOMContentLoaded",
-    function() {
+    function () {
 
         createCartButton();
 

@@ -13,6 +13,8 @@
 
     <!-- Home Page CSS -->
     <link rel="stylesheet" href="css/home.css">
+
+    <link rel="stylesheet" href="css/cart.css">
 </head>
 
 <body>
@@ -43,7 +45,7 @@
             </a>
         </nav>
 
-      
+
 
     </header>
 
@@ -112,8 +114,8 @@
 
 
             <!-- RIGHT SIDE: CAMPUS PICKS SHOWCASE -->
-            <div class="campus-picks">
 
+            <div class="campus-picks">
                 <div class="picks-header">
                     <div class="picks-title-group">
                         <span class="picks-fire">🔥</span>
@@ -122,72 +124,20 @@
                     <span class="picks-badge">● Fresh Now</span>
                 </div>
 
-                <!-- PICK 1 -->
-                <a href="menu.html?canteen=cafeteria" class="pick-card">
-                    <div class="pick-icon">
-                        🍜
-                    </div>
+                <!-- Picks will be loaded dynamically from your database -->
+                <div id="campusPicksItems">
+                    <p>Loading campus favourites...</p>
+                </div>
 
-                    <div class="pick-info">
-                        <div class="pick-meta">
-                            <span class="pick-tag">Campus favourite</span>
-                            <span class="pick-rating">★ 4.9</span>
-                        </div>
-
-                        <strong class="pick-name">
-                            Veg Hakka Noodles
-                        </strong>
-
-                        <span class="pick-sub">
-                            Chinese · Cafeteria
-                        </span>
-                    </div>
-
-                    <div class="pick-price-box">
-                        <span class="pick-price">₹95</span>
-                        <span class="pick-action">Order →</span>
-                    </div>
-                </a>
-
-                <!-- PICK 2 -->
-                <a href="menu.html?canteen=nescafe" class="pick-card">
-                    <div class="pick-icon">
-                        ☕
-                    </div>
-
-                    <div class="pick-info">
-                        <div class="pick-meta">
-                            <span class="pick-tag">Perfect break</span>
-                            <span class="pick-rating">★ 4.8</span>
-                        </div>
-
-                        <strong class="pick-name">
-                            Cold Coffee
-                        </strong>
-
-                        <span class="pick-sub">
-                            Beverages · Nescafe
-                        </span>
-                    </div>
-
-                    <div class="pick-price-box">
-                        <span class="pick-price">₹60</span>
-                        <span class="pick-action">Order →</span>
-                    </div>
-                </a>
-
-                <!-- PICKS FOOTER -->
                 <div class="picks-footer">
                     <div class="picks-perk">
                         <span class="perk-icon">⚡</span>
                         <span>Quick pickup between lectures</span>
                     </div>
-                    <a href="menu.html" class="picks-menu-link">
-                        Full Menu →
-                    </a>
+                    <a href="menu.html" class="picks-menu-link">Full Menu →</a>
                 </div>
-
             </div>
+
 
         </section>
 
@@ -330,7 +280,8 @@
                     <span>Campus <span class="logo-highlight">Bites</span></span>
                 </a>
                 <p>
-                    Your campus food guide, all in one place. Discover menus, check hours, and pick up food without the wait.
+                    Your campus food guide, all in one place. Discover menus, check hours, and pick up food without the
+                    wait.
                 </p>
             </div>
 
@@ -365,6 +316,8 @@
         </div>
 
     </footer>
+
+    <script src="js/home.js"></script>
 
     <script src="js/cart.js"></script>
 

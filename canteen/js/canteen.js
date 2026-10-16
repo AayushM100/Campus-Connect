@@ -1,103 +1,69 @@
-// Campus Bites — canteen cards, favourites and opening status
+
+"use strict";
 
 const canteenCards = document.querySelectorAll(".canteen-card");
-const favoriteButtons = document.querySelectorAll(".favorite-btn");
-const favoriteMessage = document.querySelector("#favoriteMessage");
-let favoriteCanteens = JSON.parse(localStorage.getItem("favoriteCanteens")) || [];
-let messageTimer;
+const breakOptions = document.querySelectorAll(".break-option");
+const resultsText = document.querySelector("#resultsText");
 
-function showMessage(message) {
-    window.clearTimeout(messageTimer);
-    favoriteMessage.textContent = message;
-    messageTimer = window.setTimeout(function () {
-        favoriteMessage.textContent = "";
-    }, 2800);
-}
+const foodFilterUrls = {
+    all: "menu.html",
+    "full-meals": "menu.html?filter=full-meals",
+    "coffee-drinks": "menu.html?filter=coffee-drinks",
+    "quick-bites": "menu.html?filter=quick-bites"
+};
 
-function setFavoriteState(button, isFavorite) {
-    const name = button.getAttribute("aria-label").replace("Favorite ", "").replace("Remove ", "");
-    button.textContent = isFavorite ? "♥" : "♡";
-    button.classList.toggle("active", isFavorite);
-    button.setAttribute("aria-label", (isFavorite ? "Remove " : "Favorite ") + name);
-    button.setAttribute("aria-pressed", String(isFavorite));
-}
+// Highlight a selected category and navigate to Browse Cuisine.
+breakOptions.forEach(function (button) {
+    button.addEventListener("click", function () {
+        const filter = button.dataset.foodFilter || "all";
 
-favoriteButtons.forEach(function (button) {
-    const canteen = button.dataset.favorite;
-    setFavoriteState(button, favoriteCanteens.includes(canteen));
+        breakOptions.forEach(function (option) {
+            option.classList.toggle("active", option === button);
+        });
 
-    button.addEventListener("click", function (event) {
-        event.stopPropagation();
-        const isFavorite = favoriteCanteens.includes(canteen);
-        favoriteCanteens = isFavorite
-            ? favoriteCanteens.filter(function (item) { return item !== canteen; })
-            : favoriteCanteens.concat(canteen);
-
-        setFavoriteState(button, !isFavorite);
-        localStorage.setItem("favoriteCanteens", JSON.stringify(favoriteCanteens));
-        showMessage(isFavorite ? "Removed from your favourites." : "Saved to your favourites.");
+        window.location.href = foodFilterUrls[filter] || foodFilterUrls.all;
     });
 });
 
-function openMenu(card) {
-    window.location.href = "menu.html?canteen=" + card.dataset.canteen;
+function formatTime(decimalTime) {
+    const hour = Math.floor(decimalTime);
+    const minutes = Math.round((decimalTime - hour) * 60);
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+
+    return displayHour + ":" +
+        String(minutes).padStart(2, "0") + " " + period;
 }
 
-canteenCards.forEach(function (card) {
-    card.addEventListener("click", function (event) {
-        if (!event.target.closest("a, button")) openMenu(card);
-    });
-
-    card.addEventListener("keydown", function (event) {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openMenu(card);
-        }
-    });
-});
-
-function updateCanteenStatus() {
+function updateCanteenHours() {
     const now = new Date();
-    const currentHour = now.getHours() + now.getMinutes() / 60;
+    const currentTime = now.getHours() + now.getMinutes() / 60;
 
     canteenCards.forEach(function (card) {
         const opening = Number(card.dataset.opening);
         const closing = Number(card.dataset.closing);
         const status = card.querySelector(".status");
         const openTime = card.querySelector(".open-time");
-        const isOpen = currentHour >= opening && currentHour < closing;
+
+        if (!status || !openTime) return;
+
+        const isOpen = currentTime >= opening && currentTime < closing;
 
         status.textContent = isOpen ? "Open now" : "Closed";
         status.classList.toggle("closed", !isOpen);
-        openTime.textContent = isOpen ? "Open right now" : "Opens at " + formatTime(opening);
-    });
-}
 
-function formatTime(time) {
-    const hour = Math.floor(time);
-    const minutes = time % 1 ? "30" : "00";
-    const period = hour >= 12 ? "PM" : "AM";
-    return (hour % 12 || 12) + ":" + minutes + " " + period;
-}
-
-function setupMobileNav() {
-    const toggle = document.querySelector(".nav-toggle");
-    const nav = document.querySelector(".navbar nav");
-    if (!toggle || !nav) return;
-
-    toggle.addEventListener("click", function () {
-        const isOpen = nav.classList.toggle("is-open");
-        toggle.setAttribute("aria-expanded", String(isOpen));
-        toggle.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
-    });
-
-    nav.addEventListener("click", function (event) {
-        if (event.target.matches("a")) {
-            nav.classList.remove("is-open");
-            toggle.setAttribute("aria-expanded", "false");
+        if (isOpen) {
+            openTime.textContent = "Open until " + formatTime(closing);
+        } else if (currentTime < opening) {
+            openTime.textContent = "Opens at " + formatTime(opening);
+        } else {
+            openTime.textContent = "Opens tomorrow at " + formatTime(opening);
         }
     });
 }
 
-updateCanteenStatus();
-setupMobileNav();
+if (resultsText) {
+    resultsText.textContent = "All " + canteenCards.length + " canteens";
+}
+
+updateCanteenHours();

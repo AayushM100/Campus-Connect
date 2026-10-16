@@ -1,1639 +1,304 @@
-/* =====================================================
-   CAMPUS BITES - CANTEENS PAGE
-   ===================================================== */
 
-
-/* =====================================================
-   PAGE
-   ===================================================== */
-
-body {
-
-    margin: 0;
-
-    background: #f8f7f4;
-
-    color: #172033;
-
+.canteens-page {
+    max-width: 1450px;
+    margin: 0 auto;
+    padding: 28px;
+    color: #17243a;
 }
 
-
-
-/* =====================================================
-   NAVBAR
-   ===================================================== */
-
-.navbar {
-
-    height: 76px;
-
-    display: flex;
-
-    align-items: center;
-
-    padding: 0 4%;
-
-    background: #ffffff;
-
-    border-bottom: 1px solid #eeeeee;
-
-    box-sizing: border-box;
-
-    position: relative;
-
-    z-index: 100;
-
-}
-
-
-/* LOGO */
-
-.logo {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 12px;
-
-    text-decoration: none;
-
-    color: #172033;
-
-    font-size: 25px;
-
-    font-weight: 800;
-
-    margin-right: 90px;
-
-}
-
-
-/* LOGO ICON */
-
-.logo-icon {
-
-    width: 44px;
-
-    height: 44px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    background: #e76a3c;
-
-    color: white;
-
-    border-radius: 12px;
-
-    font-size: 22px;
-
-    box-shadow:
-        0 5px 14px rgba(231, 106, 60, 0.20);
-
-}
-
-
-/* LOGO HIGHLIGHT */
-
-.logo-highlight {
-
-    color: #e76a3c;
-
-}
-
-
-
-/* =====================================================
-   NAVIGATION
-   ===================================================== */
-
-.navbar nav {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 12px;
-
-}
-
-
-.navbar nav a {
-
-    position: relative;
-
-    display: flex;
-
-    align-items: center;
-
-    padding: 13px 20px;
-
+.break-panel {
+    background: #fff;
+    border: 1px solid #e8e2dc;
     border-radius: 18px;
-
-    text-decoration: none;
-
-    color: #172033;
-
-    font-size: 16px;
-
-    font-weight: 600;
-
-    transition:
-        background 0.25s ease,
-        color 0.25s ease,
-        box-shadow 0.25s ease;
-
+    padding: 28px;
+    margin-bottom: 42px;
 }
 
-
-.navbar nav a:hover {
-
-    color: #e76a3c;
-
-    background: #fff5ef;
-
+.break-heading h1 {
+    margin: 0 0 8px;
+    font-size: clamp(24px, 3vw, 32px);
 }
 
-
-/* ACTIVE */
-
-.navbar nav a.active {
-
-    color: #e76a3c;
-
-    background: #ffffff;
-
-    box-shadow:
-        0 8px 20px rgba(23, 32, 51, 0.08);
-
-}
-
-
-.navbar nav a.active::after {
-
-    content: "";
-
-    position: absolute;
-
-    left: 12px;
-
-    right: 12px;
-
-    bottom: -1px;
-
-    height: 3px;
-
-    background: #e76a3c;
-
-    border-radius: 5px;
-
-}
-
-
-
-/* =====================================================
-   CART
-   ===================================================== */
-
-.cart-icon {
-
-    margin-left: auto;
-
-    position: relative;
-
-    font-size: 25px;
-
-    color: #68758a;
-
-    cursor: pointer;
-
-}
-
-
-.cart-count {
-
-    position: absolute;
-
-    top: -9px;
-
-    right: -10px;
-
-    width: 20px;
-
-    height: 20px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    background: #e76a3c;
-
-    color: white;
-
-    border-radius: 50%;
-
-    font-size: 11px;
-
-    font-weight: 700;
-
-}
-
-/* =====================================================
-   FLOATING CART BUTTON
-   ===================================================== */
-
-#cartButton {
-
-    position: fixed;
-
-    width: 120px;
-    height: 120px;
-
-    border: none;
-
-    border-radius: 50%;
-
-    background: #d16b42;
-
-    color: white;
-
-    font-size: 42px;
-
-    cursor: pointer;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    box-shadow:
-        0 8px 25px rgba(0, 0, 0, 0.20);
-
-    z-index: 9999;
-
-    transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-}
-
-
-/* =====================================================
-   HOME PAGE
-   Cart → upper right
-   ===================================================== */
-
-#cartButton.cart-home {
-
-    top: 90px;
-
-    right: 35px;
-
-}
-
-
-/* =====================================================
-   CANTEENS + MENU
-   Cart → bottom right
-   ===================================================== */
-
-#cartButton.cart-bottom {
-
-    right: 30px;
-
-    bottom: 30px;
-
-}
-
-
-/* =====================================================
-   HOVER
-   ===================================================== */
-
-#cartButton:hover {
-
-    transform: scale(1.05);
-
-    box-shadow:
-        0 12px 30px rgba(0, 0, 0, 0.25);
-
-}
-
-
-/* =====================================================
-   CART COUNT
-   ===================================================== */
-
-#cartCount {
-
-    position: absolute;
-
-    top: -5px;
-
-    right: -5px;
-
-    min-width: 32px;
-
-    height: 32px;
-
-    padding: 3px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    border-radius: 50%;
-
-    background: #172033;
-
-    color: white;
-
-    font-size: 16px;
-
-    font-weight: 700;
-
-    box-sizing: border-box;
-
-}
-
-
-/* =====================================================
-   MOBILE
-   ===================================================== */
-
-@media (max-width: 600px) {
-
-    #cartButton {
-
-        width: 70px;
-
-        height: 70px;
-
-        font-size: 28px;
-
-    }
-
-    #cartButton.cart-home {
-
-        top: 75px;
-
-        right: 20px;
-
-    }
-
-    #cartButton.cart-bottom {
-
-        right: 20px;
-
-        bottom: 20px;
-
-    }
-
-}
-
-
-
-/* =====================================================
-   HERO
-   ===================================================== */
-
-.canteen-hero {
-
-    position: relative;
-
-    min-height: 255px;
-
-    display: flex;
-
-    align-items: center;
-
-    overflow: hidden;
-
-    background:
-        linear-gradient(
-            90deg,
-            #241d19 0%,
-            #342720 42%,
-            #76675e 75%,
-            #aaa39e 100%
-        );
-
-}
-
-
-/* ORANGE GLOW */
-
-.canteen-hero::after {
-
-    content: "";
-
-    position: absolute;
-
-    width: 450px;
-
-    height: 450px;
-
-    right: -100px;
-
-    top: -200px;
-
-    background:
-        radial-gradient(
-            circle,
-            rgba(231, 106, 60, 0.35),
-            transparent 65%
-        );
-
-}
-
-
-/* HERO CONTENT */
-
-.hero-content {
-
-    position: relative;
-
-    z-index: 2;
-
-    width: min(1450px, 90%);
-
-    margin: auto;
-
-    padding: 42px 0;
-
-}
-
-
-.hero-tagline {
-
-    margin: 0 0 12px;
-
-    color: #f29a58;
-
-    font-size: 19px;
-
-    font-weight: 700;
-
-    font-style: italic;
-
-}
-
-
-.hero-content h1 {
-
+.break-heading p,
+.section-heading p {
     margin: 0;
-
-    color: white;
-
-    font-size: clamp(42px, 5vw, 64px);
-
-    line-height: 1.05;
-
-    font-weight: 800;
-
-    letter-spacing: -2px;
-
+    color: #718096;
 }
 
-
-.hero-content h1 span {
-
-    color: #e76a3c;
-
-}
-
-
-.hero-description {
-
-    margin: 15px 0 0;
-
-    color: #f3f3f3;
-
-    font-size: 18px;
-
-    font-weight: 500;
-
-}
-
-
-
-/* =====================================================
-   MAIN PAGE
-   ===================================================== */
-
-.canteen-page {
-
-    display: grid;
-
-    grid-template-columns: 300px 1fr;
-
-    gap: 28px;
-
-    width: min(1500px, 94%);
-
-    margin: 30px auto 60px;
-
-}
-
-
-
-/* =====================================================
-   SIDEBAR
-   ===================================================== */
-
-.canteen-sidebar {
-
-    background: white;
-
-    border: 1px solid #e4e1dc;
-
-    border-radius: 14px;
-
-    padding: 24px 20px;
-
-    height: fit-content;
-
-    box-sizing: border-box;
-
-    box-shadow:
-        0 4px 15px rgba(23, 32, 51, 0.03);
-
-}
-
-
-.sidebar-section {
-
-    padding-bottom: 25px;
-
-    margin-bottom: 22px;
-
-    border-bottom: 1px solid #eeeeee;
-
-}
-
-
-.sidebar-section:last-of-type {
-
-    border-bottom: none;
-
-}
-
-
-.sidebar-section h2 {
-
-    margin: 0 0 17px;
-
-    color: #172033;
-
-    font-size: 18px;
-
-    font-weight: 750;
-
-}
-
-
-
-/* =====================================================
-   CANTEEN FILTERS
-   ===================================================== */
-
-.canteen-filter {
-
+.break-options {
     display: flex;
-
-    align-items: center;
-
-    gap: 12px;
-
-    padding: 11px 12px;
-
-    margin-bottom: 5px;
-
-    border-radius: 9px;
-
-    color: #607087;
-
-    font-size: 15px;
-
-    font-weight: 550;
-
-    cursor: pointer;
-
-    transition: 0.2s ease;
-
-}
-
-
-.canteen-filter:hover {
-
-    background: #fff5ef;
-
-    color: #e76a3c;
-
-}
-
-
-.canteen-filter.active {
-
-    background: #fff0e8;
-
-    color: #e76a3c;
-
-    font-weight: 700;
-
-}
-
-
-
-/* RADIO */
-
-.radio {
-
-    width: 17px;
-
-    height: 17px;
-
-    border: 2px solid #c8ced5;
-
-    border-radius: 50%;
-
-    box-sizing: border-box;
-
-}
-
-
-.radio.active {
-
-    border-color: #e76a3c;
-
-    position: relative;
-
-}
-
-
-.radio.active::after {
-
-    content: "";
-
-    position: absolute;
-
-    width: 8px;
-
-    height: 8px;
-
-    background: #e76a3c;
-
-    border-radius: 50%;
-
-    top: 50%;
-
-    left: 50%;
-
-    transform: translate(-50%, -50%);
-
-}
-
-
-
-/* =====================================================
-   CATEGORIES
-   ===================================================== */
-
-.category-list {
-
-    display: flex;
-
     flex-wrap: wrap;
-
-    gap: 8px;
-
+    gap: 10px;
+    margin-top: 24px;
 }
 
-
-.category-list span {
-
-    padding: 8px 13px;
-
-    border: 1px solid #dedbd7;
-
-    border-radius: 18px;
-
-    background: white;
-
-    color: #617086;
-
-    font-size: 13px;
-
+.break-option {
+    padding: 13px 20px;
+    border: 1px solid #e1d9d2;
+    border-radius: 11px;
+    background: #fff;
+    color: #455268;
+    font-size: 15px;
+    font-weight: 650;
     cursor: pointer;
-
-    transition: 0.2s ease;
-
+    transition: background .2s, color .2s, transform .2s;
 }
 
-
-.category-list span:hover {
-
-    border-color: #e76a3c;
-
-    color: #e76a3c;
-
-    background: #fff8f4;
-
+.break-option:hover {
+    transform: translateY(-1px);
+    border-color: #c77950;
 }
 
-
-
-/* =====================================================
-   CLEAR FILTERS
-   ===================================================== */
-
-.clear-filters {
-
-    border: none;
-
-    background: transparent;
-
-    color: #e76a3c;
-
-    font-size: 14px;
-
-    font-weight: 600;
-
-    cursor: pointer;
-
-    padding: 5px 2px;
-
+.break-option.active {
+    background: #c77950;
+    border-color: #c77950;
+    color: #fff;
 }
-
-
-
-/* =====================================================
-   CONTENT
-   ===================================================== */
-
-.canteen-content {
-
-    min-width: 0;
-
-}
-
-
-
-/* =====================================================
-   SECTION HEADING
-   ===================================================== */
 
 .section-heading {
-
-    background: white;
-
-    border: 1px solid #e4e1dc;
-
-    border-radius: 14px;
-
-    padding: 22px 24px;
-
-    margin-bottom: 18px;
-
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 24px;
 }
-
-
-.section-heading p {
-
-    margin: 0 0 4px;
-
-    color: #e76a3c;
-
-    font-size: 13px;
-
-    font-weight: 750;
-
-    letter-spacing: 1.4px;
-
-}
-
 
 .section-heading h2 {
-
-    margin: 0;
-
-    color: #172033;
-
+    margin: 0 0 8px;
     font-size: 27px;
-
-    font-weight: 800;
-
 }
 
-
-.section-heading span {
-
-    display: block;
-
-    margin-top: 5px;
-
-    color: #748197;
-
-    font-size: 15px;
-
+.browse-all {
+    color: #b85f36;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
 }
 
-
-
-/* =====================================================
-   CANTEEN GRID
-   ===================================================== */
+.browse-all:hover {
+    text-decoration: underline;
+}
 
 .canteen-grid {
-
     display: grid;
-
-    grid-template-columns:
-        repeat(3, minmax(0, 1fr));
-
-    gap: 20px;
-
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
 }
-
-
-
-/* =====================================================
-   CANTEEN CARD
-   ===================================================== */
 
 .canteen-card {
-
     overflow: hidden;
-
-    background: #ffffff;
-
-    border: 1px solid #dedbd7;
-
-    border-radius: 15px;
-
-    box-shadow:
-        0 5px 16px rgba(23, 32, 51, 0.05);
-
-    transition:
-        transform 0.25s ease,
-        box-shadow 0.25s ease;
-
+    border: 1px solid #e8e2dc;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 5px 18px rgb(28 35 45 / 5%);
+    transition: transform .2s, box-shadow .2s;
 }
-
 
 .canteen-card:hover {
-
-    transform: translateY(-4px);
-
-    box-shadow:
-        0 12px 30px rgba(23, 32, 51, 0.10);
-
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgb(28 35 45 / 9%);
 }
-
-
-
-/* =====================================================
-   IMAGE
-   ===================================================== */
 
 .canteen-image {
-
-    position: relative;
-
-    height: 245px;
-
-    overflow: hidden;
-
-    background: #eeeae5;
-
-    isolation: isolate;
-
-}
-
-
-.canteen-image img {
-
-    width: 100%;
-
-    height: 100%;
-
-    object-fit: cover;
-
     display: block;
-
-    transition:
-        transform 0.5s ease,
-        filter 0.5s ease;
-
+    width: 100%;
+    height: 255px;
+    object-fit: cover;
+    background: #f1eee9;
 }
 
-
-/* Image positioning */
-
-.canteen-card:nth-child(1)
-.canteen-image img {
-
-    object-position: center 52%;
-
+.canteen-content {
+    padding: 20px;
 }
 
-
-.canteen-card:nth-child(2)
-.canteen-image img {
-
-    object-position: center 48%;
-
-}
-
-
-.canteen-card:nth-child(3)
-.canteen-image img {
-
-    object-position: center 48%;
-
-}
-
-
-
-/* =====================================================
-   IMAGE → CONTENT BLEND
-   ===================================================== */
-
-.canteen-image::after {
-
-    content: "";
-
-    position: absolute;
-
-    inset: 0;
-
-    z-index: 1;
-
-    pointer-events: none;
-
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(17, 24, 39, 0) 45%,
-            rgba(17, 24, 39, 0.10) 72%,
-            rgba(17, 24, 39, 0.30) 100%
-        );
-
-}
-
-
-/* CAFETERIA OVERLAY */
-
-.canteen-card:nth-child(1)
-.canteen-image::after {
-
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(78, 51, 34, 0) 45%,
-            rgba(78, 51, 34, 0.12) 72%,
-            rgba(42, 31, 25, 0.32) 100%
-        );
-
-}
-
-
-/* TIMELESS OVERLAY */
-
-.canteen-card:nth-child(2)
-.canteen-image::after {
-
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(12, 18, 24, 0) 42%,
-            rgba(12, 18, 24, 0.14) 70%,
-            rgba(12, 18, 24, 0.38) 100%
-        );
-
-}
-
-
-/* NESCAFE OVERLAY */
-
-.canteen-card:nth-child(3)
-.canteen-image::after {
-
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(55, 18, 20, 0) 45%,
-            rgba(55, 18, 20, 0.10) 70%,
-            rgba(35, 20, 22, 0.34) 100%
-        );
-
-}
-
-
-/* IMAGE HOVER */
-
-.canteen-card:hover
-.canteen-image img {
-
-    transform: scale(1.045);
-
-    filter:
-        saturate(1.04)
-        contrast(1.02);
-
-}
-
-
-
-/* =====================================================
-   FAVORITE BUTTON
-   ===================================================== */
-
-.favorite-btn {
-
-    position: absolute;
-
-    z-index: 3;
-
-    top: 14px;
-
-    right: 14px;
-
-    width: 43px;
-
-    height: 43px;
-
-    border: none;
-
-    border-radius: 50%;
-
-    background:
-        rgba(255, 255, 255, 0.94);
-
-    color: #536176;
-
-    backdrop-filter: blur(8px);
-
-    font-size: 23px;
-
+.canteen-title {
     display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    cursor: pointer;
-
-    box-shadow:
-        0 5px 15px rgba(0, 0, 0, 0.12);
-
-    transition: 0.2s ease;
-
-}
-
-
-.favorite-btn:hover {
-
-    color: #e76a3c;
-
-    transform: scale(1.05);
-
-}
-
-
-.favorite-btn.active {
-
-    color: #e76a3c;
-
-}
-
-
-
-/* =====================================================
-   CARD CONTENT
-   ===================================================== */
-
-.canteen-card-content {
-
-    position: relative;
-
-    padding: 21px 20px 20px;
-
-    background: #ffffff;
-
-}
-
-
-/* Small orange blend line */
-
-.canteen-card-content::before {
-
-    content: "";
-
-    position: absolute;
-
-    left: 20px;
-
-    right: 20px;
-
-    top: 0;
-
-    height: 2px;
-
-    background:
-        linear-gradient(
-            90deg,
-            rgba(231, 106, 60, 0),
-            rgba(231, 106, 60, 0.22),
-            rgba(231, 106, 60, 0)
-        );
-
-}
-
-
-
-/* =====================================================
-   TITLE
-   ===================================================== */
-
-.canteen-title-row {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 10px;
-
     flex-wrap: wrap;
-
+    align-items: center;
+    gap: 12px;
 }
 
-
-.canteen-title-row h3 {
-
+.canteen-title h3 {
     margin: 0;
-
-    color: #1a2233;
-
     font-size: 24px;
-
-    font-weight: 800;
-
-    letter-spacing: -0.35px;
-
 }
-
-
-
-/* =====================================================
-   STATUS
-   ===================================================== */
 
 .status {
-
     padding: 5px 10px;
-
-    border-radius: 20px;
-
-    background: #eaf7e9;
-
-    color: #4f8a4c;
-
+    border-radius: 7px;
+    background: #edf4e9;
+    color: #477248;
     font-size: 12px;
-
     font-weight: 700;
-
 }
-
 
 .status.closed {
-
-    background: #f5eeee;
-
-    color: #a45c5c;
-
+    background: #fcebea;
+    color: #a43e37;
 }
 
-
-
-/* =====================================================
-   DESCRIPTION
-   ===================================================== */
-
-.canteen-description {
-
+.canteen-content > p {
     min-height: 48px;
-
-    margin: 13px 0 15px;
-
-    color: #68778e;
-
-    font-size: 15px;
-
+    margin: 16px 0;
+    color: #718096;
     line-height: 1.6;
-
-    font-weight: 500;
-
 }
 
-
-
-/* =====================================================
-   INFO
-   ===================================================== */
-
-.canteen-info {
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 10px;
-
-    margin-bottom: 18px;
-
-}
-
-
-.canteen-info span {
-
-    color: #344155;
-
+.canteen-details {
+    display: grid;
+    gap: 9px;
+    color: #536176;
     font-size: 14px;
-
-    font-weight: 550;
-
 }
-
-
-
-/* =====================================================
-   BOTTOM
-   ===================================================== */
-
-.canteen-bottom {
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    gap: 10px;
-
-    padding-top: 15px;
-
-    border-top: 1px solid #eeeeee;
-
-}
-
-
-.canteen-bottom > span {
-
-    color: #59677d;
-
-    font-size: 14px;
-
-    font-weight: 550;
-
-}
-
-
-
-/* =====================================================
-   VIEW MENU BUTTON
-   ===================================================== */
-
-.menu-button {
-
-    border: none;
-
-    padding: 12px 18px;
-
-    border-radius: 10px;
-
-    background: #e76a3c;
-
-    color: white;
-
-    font-size: 14px;
-
-    font-weight: 750;
-
-    cursor: pointer;
-
-    box-shadow:
-        0 6px 14px rgba(231, 106, 60, 0.20);
-
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease;
-
-}
-
-
-.menu-button:hover {
-
-    background: #d95c2f;
-
-    transform: translateY(-2px);
-
-}
-
-
-
-/* =====================================================
-   FAVORITE MESSAGE
-   ===================================================== */
-
-#favoriteMessage {
-
-    margin-top: 15px;
-
-    color: #e76a3c;
-
-    font-size: 14px;
-
-    font-weight: 600;
-
-}
-
-
-
-/* =====================================================
-   FOOTER
-   ===================================================== */
 
 .canteen-footer {
-
-    display: grid;
-
-    grid-template-columns:
-        2fr 1fr 1fr 1fr;
-
-    gap: 40px;
-
-    padding: 55px 7%;
-
-    background: #172033;
-
-    color: white;
-
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 22px;
+    padding-top: 17px;
+    border-top: 1px solid #eee8e2;
 }
 
-
-.canteen-footer h2 {
-
-    margin: 0 0 10px;
-
-    font-size: 22px;
-
+.open-time {
+    color: #718096;
+    font-size: 13px;
 }
 
-
-.canteen-footer h3 {
-
-    margin: 0 0 13px;
-
-    font-size: 15px;
-
-}
-
-
-.canteen-footer p {
-
-    margin: 7px 0;
-
-    color: #aeb7c6;
-
-    font-size: 14px;
-
-}
-
-
-.canteen-footer a {
-
-    display: block;
-
-    margin: 7px 0;
-
-    color: #aeb7c6;
-
+.menu-button {
+    display: inline-block;
+    padding: 12px 16px;
+    border-radius: 9px;
+    background: #c77950;
+    color: #fff;
+    font-weight: 700;
     text-decoration: none;
-
-    font-size: 14px;
-
+    white-space: nowrap;
 }
 
-
-.canteen-footer a:hover {
-
-    color: #e76a3c;
-
+.menu-button:hover {
+    background: #ad633d;
 }
 
+.site-footer {
+    margin-top: 35px;
+    padding: 20px 28px;
+    border-top: 1px solid #e8e2dc;
+    background: #fff;
+}
 
+.footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+    color: #718096;
+    font-size: 13px;
+}
 
-/* =====================================================
-   RESPONSIVE
-   ===================================================== */
-
-@media (max-width: 1100px) {
-
-    .canteen-page {
-
-        grid-template-columns: 240px 1fr;
-
-    }
-
-
+@media (max-width: 950px) {
     .canteen-grid {
-
-        grid-template-columns:
-            repeat(2, minmax(0, 1fr));
-
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-
 }
 
-
-@media (max-width: 800px) {
-
-    .navbar {
-
-        padding: 0 20px;
-
+@media (max-width: 650px) {
+    .canteens-page {
+        padding: 16px;
     }
 
-
-    .logo {
-
-        margin-right: 20px;
-
+    .break-panel {
+        padding: 20px;
+        margin-bottom: 30px;
     }
 
-
-    .navbar nav {
-
-        gap: 3px;
-
-    }
-
-
-    .navbar nav a {
-
-        padding: 10px 12px;
-
-        font-size: 14px;
-
-    }
-
-
-    .canteen-page {
-
-        grid-template-columns: 1fr;
-
-    }
-
-
-    .canteen-sidebar {
-
-        display: none;
-
-    }
-
-
-    .canteen-grid {
-
-        grid-template-columns: 1fr;
-
-    }
-
-
-    .canteen-footer {
-
+    .break-options {
+        display: grid;
         grid-template-columns: 1fr 1fr;
-
     }
 
-}
-
-
-@media (max-width: 550px) {
-
-    .navbar {
-
-        height: auto;
-
-        min-height: 70px;
-
+    .break-option {
+        padding: 12px 8px;
+        font-size: 13px;
     }
 
-
-    .logo {
-
-        font-size: 20px;
-
+    .canteen-grid {
+        grid-template-columns: 1fr;
     }
-
-
-    .logo-icon {
-
-        width: 38px;
-
-        height: 38px;
-
-    }
-
-
-    .navbar nav a {
-
-        font-size: 12px;
-
-        padding: 9px 8px;
-
-    }
-
-
-    .cart-icon {
-
-        display: none;
-
-    }
-
-
-    .canteen-hero {
-
-        min-height: 220px;
-
-    }
-
-
-    .hero-content {
-
-        width: 88%;
-
-    }
-
-
-    .hero-content h1 {
-
-        font-size: 40px;
-
-    }
-
-
-    .hero-description {
-
-        font-size: 15px;
-
-    }
-
-
-    .canteen-page {
-
-        width: 92%;
-
-        margin-top: 20px;
-
-    }
-
 
     .canteen-image {
-
-        height: 225px;
-
+        height: 220px;
     }
 
-
-    .canteen-bottom {
-
-        align-items: stretch;
-
-        flex-direction: column;
-
+    .section-heading {
+        align-items: flex-start;
     }
 
-
-    .menu-button {
-
-        width: 100%;
-
+    .browse-all {
+        font-size: 13px;
     }
-
 
     .canteen-footer {
-
-        grid-template-columns: 1fr;
-
+        align-items: flex-start;
     }
+}
 
+
+/* ===== Campus Bites Dark Footer ===== */
+
+footer,
+.site-footer,
+.footer {
+    background-color: #1b2032 !important;
+    color: #f8fafc !important;
+    border-top: 1px solid #30364a;
+}
+
+footer h2,
+footer h3,
+footer h4,
+.site-footer h2,
+.site-footer h3,
+.site-footer h4,
+.footer h2,
+.footer h3,
+.footer h4 {
+    color: #ffffff !important;
+}
+
+footer p,
+footer a,
+footer li,
+.site-footer p,
+.site-footer a,
+.site-footer li,
+.footer p,
+.footer a,
+.footer li {
+    color: #94a3bd !important;
+}
+
+footer a:hover,
+.site-footer a:hover,
+.footer a:hover {
+    color: #d9774f !important;
+}
+
+footer hr,
+.site-footer hr,
+.footer hr {
+    border-color: #30364a !important;
+}
+
+footer .logo,
+.site-footer .logo,
+.footer .logo {
+    color: #ffffff !important;
+}
+
+footer .logo span,
+.site-footer .logo span,
+.footer .logo span {
+    color: #d9774f !important;
 }

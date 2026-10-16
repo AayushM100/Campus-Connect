@@ -1,887 +1,387 @@
-// =====================================================
-// 1. IMPORT PACKAGES
-// =====================================================
 
-require("dotenv").config();
+"use strict";
 
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
-
-const fs = require("fs");
+const dotenv = require("dotenv");
 const path = require("path");
 
-
-// =====================================================
-// 2. CREATE EXPRESS APP
-// =====================================================
+dotenv.config();
 
 const app = express();
-
-const PORT = Number(process.env.PORT || 3000);
-
-function getSslCa(envName, fileEnvName) {
-    const filePath = process.env[fileEnvName] || "";
-
-    if (filePath) {
-        try {
-            return fs.readFileSync(filePath, "utf8");
-        } catch (error) {
-            console.log(
-                "Could not read SSL CA file:",
-                filePath,
-                error.message
-            );
-        }
-    }
-
-    return (
-        process.env[envName] || ""
-    ).replace(/\\n/g, "\n");
-}
-
-function sslEnabled(envName) {
-    return String(
-        process.env[envName] || ""
-    ).toLowerCase() === "true";
-}
-
-
-// =====================================================
-// 3. ENABLE CORS + JSON
-// =====================================================
+const PORT = process.env.PORT || 3000;
+const DB = "campus_canteen";
 
 app.use(cors());
-
-app.use(express.json({
-    limit: "10mb"
-}));
-
-
-// =====================================================
-// 4. CONNECT TO MYSQL
-// =====================================================
-
-const canteenSslCa = getSslCa(
-    "CANTEEN_DB_SSL_CA",
-    "CANTEEN_DB_SSL_CA_FILE"
-);
-
-const canteenDB = mysql.createConnection({
-    host: process.env.CANTEEN_DB_HOST,
-    user: process.env.CANTEEN_DB_USER,
-    password: process.env.CANTEEN_DB_PASSWORD || "",
-    database: process.env.CANTEEN_DB_NAME,
-    port: Number(process.env.CANTEEN_DB_PORT || 3306),
-    ...(canteenSslCa
-        ? {
-            ssl: {
-                ca: canteenSslCa,
-                rejectUnauthorized: true
-            }
-        }
-        : sslEnabled("CANTEEN_DB_SSL")
-            ? {
-                ssl: {
-                    rejectUnauthorized: false
-                }
-            }
-            : {})
-});
-
-const lostFoundSslCa = getSslCa(
-    "LOST_FOUND_DB_SSL_CA",
-    "LOST_FOUND_DB_SSL_CA_FILE"
-);
-
-const lostFoundDB = mysql.createConnection({
-    host: process.env.LOST_FOUND_DB_HOST,
-    user: process.env.LOST_FOUND_DB_USER,
-    password: process.env.LOST_FOUND_DB_PASSWORD || "",
-    database: process.env.LOST_FOUND_DB_NAME,
-    port: Number(process.env.LOST_FOUND_DB_PORT || 3306),
-    ...(lostFoundSslCa
-        ? {
-            ssl: {
-                ca: lostFoundSslCa,
-                rejectUnauthorized: true
-            }
-        }
-        : sslEnabled("LOST_FOUND_DB_SSL")
-            ? {
-                ssl: {
-                    rejectUnauthorized: false
-                }
-            }
-            : {})
-});
-
-
-// =====================================================
-// LOST & FOUND ROUTES
-// =====================================================
-
-const lostFoundRoutes =
-    require("./routes/lostfound");
-
-
-// =====================================================
-// 5. TEST MYSQL CONNECTION
-// =====================================================
-
-canteenDB.connect(function(error) {
-    if (error) {
-        console.log("Canteen MySQL connection failed:", error);
-    } else {
-        console.log("Canteen MySQL connected successfully!");
-    }
-});
-
-lostFoundDB.connect(function(error) {
-    if (error) {
-        console.log("Lost & Found MySQL connection failed:", error);
-    } else {
-        console.log("Lost & Found MySQL connected successfully!");
-    }
-});
-
-
-// =====================================================
-// MAKE DATABASE AVAILABLE TO ROUTES
-// =====================================================
-
-// Database access is assigned per feature below so each module uses its own MySQL database.
-
-
-// =====================================================
-// LOST & FOUND API
-// =====================================================
-
-app.use(
-    "/api/lost-found",
-    function(req, res, next) {
-        req.db = lostFoundDB;
-        next();
-    },
-    lostFoundRoutes
-);
-
-
-// =====================================================
-// 6. LOST & FOUND FRONTEND
-// =====================================================
-
-// Your project structure should be:
-//
-// Campus-Connect
-// │
-// ├── backend
-// │   ├── server.js
-// │   └── routes
-// │
-// └── lost_and_found
-//     ├── lost.html
-//     ├── lost-items.html
-//     ├── found-items.html
-//     ├── browse.html
-//     ├── lost.css
-//     ├── logo.png
-//     └── uploads
-//
-
-const frontendPath =
-    path.join(
-        __dirname,
-        "..",
-        "lost_and_found"
-    );
-
-
-// =====================================================
-// CHECK FRONTEND FOLDER
-// =====================================================
-
-console.log(
-    "Lost & Found frontend path:",
-    frontendPath
-);
-
-const frontendAvailable =
-    fs.existsSync(frontendPath);
-
-if (!frontendAvailable) {
-    console.log(
-        "Lost & Found frontend is not inside the Render service root; Vercel serves the frontend in production."
-    );
-} else {
-    console.log(
-        "Lost & Found frontend folder found!"
-    );
-
-    // Local development convenience: serve the frontend when it is available.
-    app.use(
-        express.static(frontendPath)
-    );
-
-    app.use(
-        "/lost_and_found",
-        express.static(frontendPath)
-    );
-}
-
-// Render runtime uploads live inside backend/uploads.
-const uploadsPath = path.join(
-    __dirname,
-    "uploads"
-);
-
-app.use(
-    "/uploads",
-    express.static(uploadsPath)
-);
-
-
-// =====================================================
-// HOME PAGE
-// =====================================================
-
-app.get("/", function(req, res) {
-    res.json({
-        status: "ok",
-        service: "CampusConnect API"
-    });
-});
-
-app.get("/health", function(req, res) {
-    res.json({
-        status: "healthy"
-    });
-});
-
-app.get("/health/lost-found", function(req, res) {
-    lostFoundDB.query("SELECT 1 AS ok", function(error) {
-        if (error) {
-            return res.status(503).json({
-                status: "unhealthy",
-                service: "lost-found",
-                error: error.message
-            });
-        }
-
-        res.json({
-            status: "healthy",
-            service: "lost-found"
-        });
-    });
-});
-
-app.get("/health/canteen", function(req, res) {
-    canteenDB.query("SELECT 1 AS ok", function(error) {
-        if (error) {
-            return res.status(503).json({
-                status: "unhealthy",
-                service: "canteen",
-                error: error.message
-            });
-        }
-
-        res.json({
-            status: "healthy",
-            service: "canteen"
-        });
-    });
-});
-
-
-// =====================================================
-// 7. OPTIONAL LOST & FOUND PAGE ROUTES
-// =====================================================
-
-if (frontendAvailable) {
-
-    
-    
-    // Home
-    app.get(
-        "/lost_and_found/lost.html",
-        function(req, res) {
-    
-            res.sendFile(
-                path.join(
-                    frontendPath,
-                    "lost.html"
-                )
-            );
-    
-        }
-    );
-    
-    
-    // Lost Items
-    app.get(
-        "/lost_and_found/lost-items.html",
-        function(req, res) {
-    
-            res.sendFile(
-                path.join(
-                    frontendPath,
-                    "lost-items.html"
-                )
-            );
-    
-        }
-    );
-    
-    
-    // Found Items
-    app.get(
-        "/lost_and_found/found-items.html",
-        function(req, res) {
-    
-            res.sendFile(
-                path.join(
-                    frontendPath,
-                    "found-items.html"
-                )
-            );
-    
-        }
-    );
-    
-    
-    // Browse
-    app.get(
-        "/lost_and_found/browse.html",
-        function(req, res) {
-    
-            res.sendFile(
-                path.join(
-                    frontendPath,
-                    "browse.html"
-                )
-            );
-    
-        }
-    );
-    
-    
-    
-
-}
-
-// =====================================================
-// 7. GET MENU FROM MYSQL
-// =====================================================
-
-app.get(
-    "/api/menu/:canteen",
-    function(req, res) {
-
-        const canteen =
-            req.params.canteen;
-
-        let tableName;
-
-
-        // Decide which MySQL table to use
-
-        if (canteen === "cafeteria") {
-
-            tableName =
-                "campus_cafeteria";
-
-        }
-
-        else if (canteen === "timeless") {
-
-            tableName =
-                "cafe_timeless";
-
-        }
-
-        else if (canteen === "nescafe") {
-
-            tableName =
-                "nescafe";
-
-        }
-
-        else {
-
-            return res.status(400).json({
-
-                error:
-                    "Invalid canteen"
-
-            });
-
-        }
-
-
-        // Get menu items from MySQL
-
-        const query = `
-
-            SELECT
-                item_id,
-                item_name,
-                category,
-                price,
-                availability,
-                description
-
-            FROM ${tableName}
-
-        `;
-
-
-        canteenDB.query(
-            query,
-            function(error, results) {
-
-                if (error) {
-
-                    console.log(
-                        "Database query failed:",
-                        error
-                    );
-
-                    return res.status(500).json({
-
-                        error:
-                            "Could not fetch menu"
-
-                    });
-
-                }
-
-
-                res.json(results);
-
-            }
-        );
-
-    }
-);
-
-
-// =====================================================
-// ALL CANTEENS MENU
-// =====================================================
-
-app.get(
-    "/api/menu/all",
-    function(req, res) {
-
-        const queries = {
-
-            cafeteria: `
-
-                SELECT
-                    item_id,
-                    item_name,
-                    category,
-                    price,
-                    availability,
-                    description
-
-                FROM campus_cafeteria
-
-            `,
-
-            timeless: `
-
-                SELECT
-                    item_id,
-                    item_name,
-                    category,
-                    price,
-                    availability,
-                    description
-
-                FROM cafe_timeless
-
-            `,
-
-            nescafe: `
-
-                SELECT
-                    item_id,
-                    item_name,
-                    category,
-                    price,
-                    availability,
-                    description
-
-                FROM nescafe
-
-            `
-
-        };
-
-
-        canteenDB.query(
-            queries.cafeteria,
-            function(error, cafeteria) {
-
-                if (error) {
-
-                    console.log(
-                        "Cafeteria error:",
-                        error
-                    );
-
-                    return res.status(500).json({
-
-                        error:
-                            "Could not load cafeteria menu"
-
-                    });
-
-                }
-
-
-                canteenDB.query(
-                    queries.timeless,
-                    function(error, timeless) {
-
-                        if (error) {
-
-                            console.log(
-                                "Timeless error:",
-                                error
-                            );
-
-                            return res.status(500).json({
-
-                                error:
-                                    "Could not load Timeless menu"
-
-                            });
-
-                        }
-
-
-                        canteenDB.query(
-                            queries.nescafe,
-                            function(error, nescafe) {
-
-                                if (error) {
-
-                                    console.log(
-                                        "Nescafe error:",
-                                        error
-                                    );
-
-                                    return res.status(500).json({
-
-                                        error:
-                                            "Could not load Nescafe menu"
-
-                                    });
-
-                                }
-
-
-                                const allItems = [
-
-                                    ...cafeteria.map(
-                                        function(item) {
-
-                                            return {
-
-                                                ...item,
-
-                                                canteen:
-                                                    "Cafeteria"
-
-                                            };
-
-                                        }
-                                    ),
-
-
-                                    ...timeless.map(
-                                        function(item) {
-
-                                            return {
-
-                                                ...item,
-
-                                                canteen:
-                                                    "Timeless"
-
-                                            };
-
-                                        }
-                                    ),
-
-
-                                    ...nescafe.map(
-                                        function(item) {
-
-                                            return {
-
-                                                ...item,
-
-                                                canteen:
-                                                    "Nescafe"
-
-                                            };
-
-                                        }
-                                    )
-
-                                ];
-
-
-                                res.json(
-                                    allItems
-                                );
-
-                            }
-                        );
-
-                    }
-                );
-
-            }
-        );
-
-    }
-);
-
-
-// =====================================================
-// AI FOOD IMAGE GENERATOR
-// =====================================================
-
-app.get(
-    "/api/food-image/:canteen/:foodName",
-    async function(req, res) {
-
-        const canteen =
-            req.params.canteen;
-
-        const foodName =
-            req.params.foodName;
-
-
-        // Create safe filename
-
-        const safeCanteen =
-            canteen
-                .toLowerCase()
-                .replace(
-                    /[^a-z0-9]+/g,
-                    "-"
-                );
-
-
-        const safeFoodName =
-            foodName
-                .toLowerCase()
-                .replace(
-                    /[^a-z0-9]+/g,
-                    "-"
-                );
-
-
-        const fileName =
-            safeCanteen +
-            "-" +
-            safeFoodName +
-            ".jpg";
-
-
-        const filePath =
-            path.join(
-                foodImagesFolder,
-                fileName
-            );
-
-
-        // ======================================
-        // IMAGE ALREADY EXISTS
-        // ======================================
-
-        if (fs.existsSync(filePath)) {
-
-            console.log(
-                "Using saved image:",
-                fileName
-            );
-
-
-            return res.json({
-
-                image:
-                    "/food-images/" +
-                    fileName
-
-            });
-
-        }
-
-
-        // ======================================
-        // GENERATE NEW AI IMAGE
-        // ======================================
-
-        console.log(
-            "Generating AI image for:",
-            foodName
-        );
-
-
-        const prompt =
-            "Professional realistic food photography " +
-            "of " +
-            foodName +
-            ", Indian college cafeteria food, " +
-            "appetizing presentation, served on a " +
-            "clean ceramic plate, warm natural lighting, " +
-            "close-up food photography, realistic texture, " +
-            "high quality, no people, no text, no watermark";
-
-
-        const imageURL =
-            "https://image.pollinations.ai/prompt/" +
-            encodeURIComponent(prompt) +
-            "?model=flux" +
-            "&width=600" +
-            "&height=400" +
-            "&nologo=true" +
-            "&private=true";
-
-
-        try {
-
-            const response =
-                await fetch(imageURL);
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    "AI image generation failed: " +
-                    response.status
-                );
-
-            }
-
-
-            // Convert response to image data
-
-            const imageBuffer =
-                Buffer.from(
-                    await response.arrayBuffer()
-                );
-
-
-            // Save image permanently
-
-            fs.writeFileSync(
-                filePath,
-                imageBuffer
-            );
-
-
-            console.log(
-                "Image saved:",
-                fileName
-            );
-
-
-            // Send saved image path
-
-            res.json({
-
-                image:
-                    "/food-images/" +
-                    fileName
-
-            });
-
-
-        }
-
-        catch (error) {
-
-            console.log(
-                "AI image error:",
-                error.message
-            );
-
-
-            res.status(500).json({
-
-                error:
-                    "Could not generate food image"
-
-            });
-
-        }
-
-    }
-);
-
-
-// =====================================================
-// AI FOOD IMAGE STORAGE
-// =====================================================
-
-const foodImagesFolder =
-    path.join(
-        __dirname,
-        "food-images"
-    );
-
-
-// =====================================================
-// MAKE FOOD IMAGES ACCESSIBLE
-// =====================================================
-
+app.use(express.json());
 app.use(
     "/food-images",
-    express.static(
-        foodImagesFolder
-    )
+    express.static(path.join(__dirname, "food-images"))
 );
 
+// Connect to MySQL. Table queries below explicitly use campus_canteen.
+const db = mysql.createConnection({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    port: Number(process.env.DB_PORT || 3306),
+    ssl: process.env.DB_SSL === "true"
+        ? { rejectUnauthorized: false }
+        : undefined
+});
 
-// =====================================================
-// CREATE FOOD IMAGE FOLDER
-// =====================================================
+db.connect((err) => {
+    if (err) {
+        console.error("MySQL connection failed:", err.message);
+        return;
+    }
 
-if (
-    !fs.existsSync(
-        foodImagesFolder
-    )
-) {
+    console.log("MySQL server connected.");
 
-    fs.mkdirSync(
-        foodImagesFolder,
-        {
-            recursive: true
+    db.query("SELECT DATABASE() AS selectedDatabase", (error, rows) => {
+        if (error) {
+            console.error("Database check failed:", error.message);
+            return;
         }
-    );
 
+        console.log("Default database:", rows[0].selectedDatabase);
+        console.log("Queries explicitly use:", DB);
+    });
+});
+
+const canteens = {
+    cafeteria: {
+        name: "Cafeteria",
+        table: "campus_cafeteria"
+    },
+    timeless: {
+        name: "Timeless",
+        table: "cafe_timeless"
+    },
+    nescafe: {
+        name: "Nescafe",
+        table: "nescafe"
+    }
+};
+
+function getCanteen(id) {
+    return canteens[String(id || "").toLowerCase()];
 }
 
+function menuUnion() {
+    return `
+        SELECT item_id, item_name, category, price,
+               availability, description, 'cafeteria' AS canteen
+        FROM ${DB}.campus_cafeteria
 
-// =====================================================
-// START SERVER
-// =====================================================
+        UNION ALL
 
-app.listen(
-    PORT,
-    "0.0.0.0",
-    function() {
+        SELECT item_id, item_name, category, price,
+               availability, description, 'timeless' AS canteen
+        FROM ${DB}.cafe_timeless
 
-        console.log(
-            `Server running at http://localhost:${PORT}`
-        );
+        UNION ALL
 
+        SELECT item_id, item_name, category, price,
+               availability, description, 'nescafe' AS canteen
+        FROM ${DB}.nescafe
+    `;
+}
+
+app.get("/", (req, res) => {
+    res.json({ message: "Campus Connect Canteens Backend is running!" });
+});
+
+app.get("/health", (req, res) => {
+    db.query(`SELECT 1 FROM ${DB}.food_favourites LIMIT 1`, (err) => {
+        if (err) {
+            return res.status(500).json({
+                status: "error",
+                message: err.message
+            });
+        }
+
+        res.json({ status: "ok", database: DB });
+    });
+});
+
+app.get("/api/canteens", (req, res) => {
+    res.json(
+        Object.entries(canteens).map(([id, value]) => ({
+            id,
+            name: value.name
+        }))
+    );
+});
+
+// Get all menu items.
+app.get("/api/menu", (req, res) => {
+    db.query(menuUnion(), (err, results) => {
+        if (err) {
+            console.error("Menu error:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        res.json(results);
+    });
+});
+
+// Get menu items for one canteen.
+app.get("/api/menu/:canteen", (req, res) => {
+    const canteen = getCanteen(req.params.canteen);
+
+    if (!canteen) {
+        return res.status(404).json({ error: "Canteen not found" });
     }
-);
+
+    const sql = `
+        SELECT item_id, item_name, category, price,
+               availability, description
+        FROM ${DB}.${canteen.table}
+        ORDER BY item_id
+    `;
+
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error("Canteen menu error:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        res.json(results);
+    });
+});
+
+// Get one menu item.
+app.get("/api/item/:canteen/:id", (req, res) => {
+    const canteen = getCanteen(req.params.canteen);
+
+    if (!canteen) {
+        return res.status(404).json({ error: "Canteen not found" });
+    }
+
+    const sql = `
+        SELECT item_id, item_name, category, price,
+               availability, description
+        FROM ${DB}.${canteen.table}
+        WHERE item_id = ?
+        LIMIT 1
+    `;
+
+    db.query(sql, [req.params.id], (err, rows) => {
+        if (err) {
+            console.error("Item lookup error:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        if (!rows.length) {
+            return res.status(404).json({ error: "Item not found" });
+        }
+
+        res.json(rows[0]);
+    });
+});
+
+// Save a favourite.
+app.post("/api/favourites", (req, res) => {
+    const visitorId = String(
+        req.body.visitorId || req.body.visitor_id || ""
+    ).trim();
+
+    const canteenId = String(req.body.canteen || "").toLowerCase();
+    const itemId = String(req.body.item_id ?? "").trim();
+    const canteen = getCanteen(canteenId);
+
+    if (
+        !visitorId ||
+        visitorId.length > 100 ||
+        !canteen ||
+        !itemId ||
+        itemId.length > 100
+    ) {
+        return res.status(400).json({
+            error: "visitorId, canteen and item_id are required"
+        });
+    }
+
+    const checkSql = `
+        SELECT item_id
+        FROM ${DB}.${canteen.table}
+        WHERE item_id = ?
+        LIMIT 1
+    `;
+
+    db.query(checkSql, [itemId], (checkError, items) => {
+        if (checkError) {
+            console.error("Verify item error:", checkError.message);
+            return res.status(500).json({ error: checkError.message });
+        }
+
+        if (!items.length) {
+            return res.status(404).json({ error: "Menu item not found" });
+        }
+
+        const insertSql = `
+            INSERT IGNORE INTO ${DB}.food_favourites
+                (visitor_id, canteen, item_id)
+            VALUES (?, ?, ?)
+        `;
+
+        db.query(
+            insertSql,
+            [visitorId, canteenId, itemId],
+            (err, result) => {
+                if (err) {
+                    console.error("Save favourite error:", err.message);
+                    return res.status(500).json({ error: err.message });
+                }
+
+                res.json({
+                    success: true,
+                    favourited: true,
+                    alreadyFavourited: result.affectedRows === 0
+                });
+            }
+        );
+    });
+});
+
+// Load favourites for a visitor.
+app.get("/api/favourites/:visitorId", (req, res) => {
+    const visitorId = String(req.params.visitorId || "").trim();
+
+    if (!visitorId || visitorId.length > 100) {
+        return res.status(400).json({ error: "Valid visitor ID required" });
+    }
+
+    const sql = `
+        SELECT canteen, item_id
+        FROM ${DB}.food_favourites
+        WHERE visitor_id = ?
+    `;
+
+    db.query(sql, [visitorId], (err, rows) => {
+        if (err) {
+            console.error("Load favourites error:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        res.json(rows);
+    });
+});
+
+// Remove a favourite.
+app.delete("/api/favourites", (req, res) => {
+    const visitorId = String(
+        req.body.visitorId || req.body.visitor_id || ""
+    ).trim();
+
+    const canteenId = String(req.body.canteen || "").toLowerCase();
+    const itemId = String(req.body.item_id ?? "").trim();
+
+    if (
+        !visitorId ||
+        visitorId.length > 100 ||
+        !getCanteen(canteenId) ||
+        !itemId ||
+        itemId.length > 100
+    ) {
+        return res.status(400).json({
+            error: "visitorId, canteen and item_id are required"
+        });
+    }
+
+    const sql = `
+        DELETE FROM ${DB}.food_favourites
+        WHERE visitor_id = ? AND canteen = ? AND item_id = ?
+    `;
+
+    db.query(sql, [visitorId, canteenId, itemId], (err) => {
+        if (err) {
+            console.error("Remove favourite error:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        res.json({ success: true, favourited: false });
+    });
+});
+
+// Favourite counts for all dishes.
+app.get("/api/favourites/counts", (req, res) => {
+    const sql = `
+        SELECT canteen, item_id, COUNT(*) AS favourite_count
+        FROM ${DB}.food_favourites
+        GROUP BY canteen, item_id
+    `;
+
+    db.query(sql, (err, rows) => {
+        if (err) {
+            console.error("Favourite counts error:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        res.json(rows);
+    });
+});
+
+// Most-favourited dish.
+app.get("/api/favourites/top", (req, res) => {
+    const sql = `
+        SELECT menu.*,
+               COALESCE(f.favourite_count, 0) AS favourite_count
+        FROM (${menuUnion()}) AS menu
+        LEFT JOIN (
+            SELECT canteen, item_id, COUNT(*) AS favourite_count
+            FROM ${DB}.food_favourites
+            GROUP BY canteen, item_id
+        ) AS f
+          ON f.canteen = menu.canteen
+         AND f.item_id = menu.item_id
+        ORDER BY favourite_count DESC, menu.item_name ASC
+        LIMIT 1
+    `;
+
+    db.query(sql, (err, rows) => {
+        if (err) {
+            console.error("Top favourite error:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        if (!rows.length) {
+            return res.status(404).json({ error: "No menu items found" });
+        }
+
+        res.json(rows[0]);
+    });
+});
+
+// Campus Picks: top two dishes, ranked by number of favourites.
+app.get("/api/campus-picks", (req, res) => {
+    const sql = `
+        SELECT menu.*,
+               COUNT(f.id) AS favourite_count
+        FROM (${menuUnion()}) AS menu
+        INNER JOIN ${DB}.food_favourites AS f
+          ON f.canteen = menu.canteen
+         AND f.item_id = menu.item_id
+        GROUP BY
+            menu.item_id, menu.item_name, menu.category,
+            menu.price, menu.availability, menu.description,
+            menu.canteen
+        ORDER BY favourite_count DESC, menu.item_name ASC
+        LIMIT 2
+    `;
+
+    db.query(sql, (err, rows) => {
+        if (err) {
+            console.error("Campus Picks error:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        res.json(rows);
+    });
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Campus Connect Canteens Backend running on port ${PORT}`);
+});
