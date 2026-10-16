@@ -29,33 +29,28 @@ app.use(
 // Uses only `db` throughout this file.
 // ======================================================
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: DB_NAME,
     port: Number(process.env.DB_PORT || 3306),
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
     ...(process.env.DB_SSL === "true"
         ? { ssl: { rejectUnauthorized: false } }
         : {})
 });
 
-db.connect((err) => {
+db.query("SELECT DATABASE() AS databaseName", (err, rows) => {
     if (err) {
         console.error("MySQL connection failed:", err.message);
         return;
     }
 
     console.log("MySQL connected successfully.");
-
-    db.query("SELECT DATABASE() AS databaseName", (queryErr, rows) => {
-        if (queryErr) {
-            console.error("Database verification failed:", queryErr.message);
-            return;
-        }
-
-        console.log("DATABASE USED:", rows[0].databaseName);
-    });
+    console.log("DATABASE USED:", rows[0].databaseName);
 });
 
 // ======================================================
