@@ -1,4 +1,3 @@
-
 "use strict";
 
 // ======================================================
@@ -51,11 +50,16 @@ const db = mysql.createPool({
     idleTimeout: 60000,
     queueLimit: 0,
     enableKeepAlive: true,
-    keepAliveInitialDelay: 0,
+    keepAliveInitialDelay: 10000,
 
     ...(process.env.DB_SSL === "true"
         ? { ssl: { rejectUnauthorized: false } }
         : {})
+});
+
+// Prevent unhandled 'error' events from crashing the process.
+db.on("error", (err) => {
+    console.error("Pool connection error:", err.code || "UNKNOWN", err.message);
 });
 
 function logDatabaseError(label, err) {
@@ -520,7 +524,6 @@ app.get("/api/campus-picks", async (req, res) => {
 
 async function startServer() {
     try {
-        // Fail fast with the real connection error in Render logs.
         const rows = await query(
             "SELECT DATABASE() AS databaseName"
         );
@@ -534,11 +537,28 @@ async function startServer() {
         );
     }
 
-    app.listen(PORT, "0.0.0.0", () => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
         console.log(
             `Campus Connect Canteens Backend running on port ${PORT}`
         );
     });
+
+    // Graceful shutdown (important on Render / PaaS)
+    process.on("SIGTERM", async () => {
+        console.log("SIGTERM received. Shutting down gracefully...");
+        server.close(async () => {
+            await db.end();
+            process.exit(0);
+        });
+    });
+
+    process.on("SIGINT", async () => {
+        console.log("SIGINT received. Shutting down gracefully...");
+        server.close(async () => {
+            await db.end();
+            process.exit(0);
+        });
+    });
 }
 
-startServer();
+startServer();   
