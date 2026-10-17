@@ -1,4 +1,3 @@
-
 "use strict";
 
 // =====================================================
@@ -13,7 +12,7 @@ const resultSummary = document.querySelector("#resultSummary");
 const canteenTitle = document.querySelector("#canteenTitle");
 const clearFiltersButton = document.querySelector("#clearFilters");
 
-// Backend used for menu and favourites data.
+// Backend used for menu, favourites and food images.
 const BACKEND_URL =
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
@@ -24,19 +23,20 @@ const BACKEND_URL =
 // 2. DIRECT FOOD IMAGE URL
 // =====================================================
 
-// "Veg Puff" becomes:
-// https://campus-connect-1-0q94.onrender.com/food-images/veg-puff.webp
+// "Veg Puff"            -> .../food-images/veg-puff.webp
+// "Veg Thali + Chapati" -> .../food-images/veg-thali-chapati.webp
 //
-// Images must exist inside the food-images folder next to
-// the server.js used by your deployed backend.
+// Images must exist inside the food-images folder next to the
+// server.js of your deployed backend (and be committed to Git).
 
 function getImageUrl(itemName) {
-    const formattedName = String(itemName || "")
+    const slug = String(itemName || "")
         .trim()
         .toLowerCase()
-        .replace(/\s+/g, "-");
+        .replace(/[^a-z0-9]+/g, "-")   // spaces, +, /, & etc. -> "-"
+        .replace(/^-+|-+$/g, "");      // trim leading/trailing "-"
 
-    return `${BACKEND_URL}/food-images/${encodeURIComponent(formattedName)}.webp`;
+    return `${BACKEND_URL}/food-images/${slug}.webp`;
 }
 
 // =====================================================
@@ -182,6 +182,16 @@ async function sendFavoriteToServer(item, shouldSave) {
     }
 }
 
+// Updates every heart button already on the page WITHOUT rebuilding
+// the cards (rebuilding would re-request every food image).
+function refreshFavoriteButtons() {
+    document.querySelectorAll(".food-favorite").forEach(function (button) {
+        const item = menuItemsByKey.get(button.dataset.foodKey);
+
+        if (item) updateFavoriteButton(item, button);
+    });
+}
+
 async function loadServerFavorites() {
     try {
         const response = await fetch(
@@ -227,7 +237,8 @@ async function loadServerFavorites() {
             })
         );
 
-        displayMenu();
+        // Only refresh the hearts. Do not call displayMenu() here.
+        refreshFavoriteButtons();
 
         window.dispatchEvent(
             new Event("campusBitesFavoritesUpdated")
@@ -298,6 +309,9 @@ async function toggleFavorite(item, button) {
 // 5. LOAD ALL THREE CANTEEN MENUS
 // =====================================================
 
+// Lookup so heart buttons can find their item without rebuilding cards.
+const menuItemsByKey = new Map();
+
 function loadAllMenus() {
     if (!menuContainer) {
         console.error("Could not find #menuContainer in menu.html");
@@ -342,6 +356,11 @@ function loadAllMenus() {
     )
         .then(function (results) {
             allMenuItems = results.flat();
+
+            menuItemsByKey.clear();
+            allMenuItems.forEach(function (item) {
+                menuItemsByKey.set(getFoodKey(item), item);
+            });
 
             console.log("Menu items loaded:", allMenuItems.length);
 
@@ -591,7 +610,7 @@ function createFoodCard(item) {
     const card = document.createElement("article");
     card.className = "menu-item";
 
-    // Food image: load directly from the Render static folder.
+    // Food image: loaded directly from the Render static folder.
     const image = document.createElement("img");
     image.className = "food-image";
     image.alt = item.item_name || "Food item";
@@ -611,6 +630,7 @@ function createFoodCard(item) {
     const favoriteButton = document.createElement("button");
     favoriteButton.type = "button";
     favoriteButton.className = "food-favorite";
+    favoriteButton.dataset.foodKey = getFoodKey(item);
 
     updateFavoriteButton(item, favoriteButton);
 
