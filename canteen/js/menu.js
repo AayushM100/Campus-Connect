@@ -18,6 +18,50 @@ const API =
         ? "http://localhost:3000"
         : "";
 
+
+// Add this helper function at the top of your js/menu.js file
+function getImageUrl(itemName) {
+    // Converts "Veg Puff" to "veg-puff.webp"
+    const formattedName = itemName.toLowerCase().trim().replace(/\s+/g, '-');
+    // Replace with your actual Render backend URL
+    return `https://your-backend-url.onrender.com/food-images/${formattedName}.webp`;
+}
+
+// Locate where you build the HTML for each item card in menu.js, and update it to include the <img> tag:
+function createCardHTML(item) {
+    const imageUrl = getImageUrl(item.item_name);
+    
+    return `
+        <div class="food-card">
+            <!-- New Image Tag for Instant Loading & High Quality -->
+            <img 
+                src="${imageUrl}" 
+                alt="${item.item_name}" 
+                loading="lazy" 
+                decoding="async"
+                class="food-card-image"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+            />
+            <!-- Fallback text/placeholder if image doesn't exist yet -->
+            <div class="image-fallback" style="display: none; height: 150px; background: #f0f0f0; text-align: center; line-height: 150px;">
+                ${item.item_name}
+            </div>
+
+            <div class="card-content">
+                <span class="canteen-badge">${item.canteen || 'Nescafe'}</span>
+                <h3>${item.item_name}</h3>
+                <p>${item.description || ''}</p>
+                <div class="card-footer">
+                    <span class="price">₹${item.price}</span>
+                    <button class="add-to-cart" onclick="addToCart('${item.item_id}')">
+                        🛒 Add to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // =====================================================
 // 2. CANTEEN AND CATEGORY DATA
 // =====================================================
@@ -781,6 +825,8 @@ if (clearFiltersButton) {
         );
     });
 }
+
+
 
 // =====================================================
 // 15. START
