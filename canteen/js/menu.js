@@ -591,32 +591,20 @@ function createFoodCard(item) {
     const card = document.createElement("article");
     card.className = "menu-item";
 
-    // Food image: directly loads a .webp file from Render.
-    // There is NO call to the old /api/food-image endpoint.
+    // Food image: load directly from the Render static folder.
     const image = document.createElement("img");
-
     image.className = "food-image";
     image.alt = item.item_name || "Food item";
     image.loading = "lazy";
     image.decoding = "async";
     image.src = getImageUrl(item.item_name);
 
-    // If an image is missing, display a clean fallback instead
-    // of repeatedly requesting another image or API endpoint.
-    const imageFallback = document.createElement("div");
-    imageFallback.className = "food-image-fallback";
-    imageFallback.textContent = item.item_name || "Campus Food";
-    imageFallback.hidden = true;
-
+    // Use a placeholder if the requested image does not exist.
     image.onerror = function () {
         image.onerror = null;
-        image.hidden = true;
-        imageFallback.hidden = false;
-    };
-
-    image.onload = function () {
-        image.hidden = false;
-        imageFallback.hidden = true;
+        image.src =
+            "https://placehold.co/600x400/f3eee9/76675e?text=" +
+            encodeURIComponent(item.item_name || "Campus Food");
     };
 
     // Favourite button.
@@ -689,8 +677,7 @@ function createFoodCard(item) {
 
     bottom.append(price, availability);
     details.append(badge, title, description, bottom, addButton);
-
-    card.append(image, imageFallback, favoriteButton, details);
+    card.append(image, favoriteButton, details);
 
     return card;
 }
