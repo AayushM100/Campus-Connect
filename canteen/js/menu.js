@@ -2,7 +2,7 @@
 "use strict";
 
 // =====================================================
-// 1. ELEMENTS AND API
+// 1. ELEMENTS AND BACKEND CONFIGURATION
 // =====================================================
 
 const searchInput = document.querySelector("#menuSearch");
@@ -13,26 +13,30 @@ const resultSummary = document.querySelector("#resultSummary");
 const canteenTitle = document.querySelector("#canteenTitle");
 const clearFiltersButton = document.querySelector("#clearFilters");
 
-const API =
+// Backend used for menu and favourites data.
+const BACKEND_URL =
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
         ? "http://localhost:3000"
-        : "";
-
-// Render backend URL used specifically for food images.
-const IMAGE_API = "https://campus-connect-1-0q94.onrender.com";
+        : "https://campus-connect-1-0q94.onrender.com";
 
 // =====================================================
-// 2. FOOD IMAGE URL
+// 2. DIRECT FOOD IMAGE URL
 // =====================================================
+
+// "Veg Puff" becomes:
+// https://campus-connect-1-0q94.onrender.com/food-images/veg-puff.webp
+//
+// Images must exist inside the food-images folder next to
+// the server.js used by your deployed backend.
 
 function getImageUrl(itemName) {
     const formattedName = String(itemName || "")
-        .toLowerCase()
         .trim()
+        .toLowerCase()
         .replace(/\s+/g, "-");
 
-    return `${IMAGE_API}/food-images/${formattedName}.webp`;
+    return `${BACKEND_URL}/food-images/${encodeURIComponent(formattedName)}.webp`;
 }
 
 // =====================================================
@@ -95,9 +99,7 @@ function getVisitorId() {
                 window.crypto &&
                 typeof window.crypto.randomUUID === "function"
                     ? window.crypto.randomUUID()
-                    : "visitor-" +
-                      Date.now() +
-                      "-" +
+                    : "visitor-" + Date.now() + "-" +
                       Math.random().toString(36).slice(2);
 
             localStorage.setItem(storageKey, visitorId);
@@ -149,19 +151,22 @@ function isFavorite(item) {
 
 async function sendFavoriteToServer(item, shouldSave) {
     const payload = {
-        visitorId: visitorId,
+        visitorId,
         canteen: item.canteen,
         item_id: String(item.item_id ?? item.item_name ?? "")
     };
 
     try {
-        const response = await fetch(API + "/api/favourites", {
-            method: shouldSave ? "POST" : "DELETE",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-        });
+        const response = await fetch(
+            `${BACKEND_URL}/api/favourites`,
+            {
+                method: shouldSave ? "POST" : "DELETE",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            }
+        );
 
         const data = await response.json();
 
@@ -172,7 +177,7 @@ async function sendFavoriteToServer(item, shouldSave) {
         return true;
     } catch (error) {
         console.error("Could not sync favourite:", error);
-        alert("Could not save this favourite to the database. Please try again.");
+        alert("Could not save this favourite. Please try again.");
         return false;
     }
 }
@@ -180,7 +185,7 @@ async function sendFavoriteToServer(item, shouldSave) {
 async function loadServerFavorites() {
     try {
         const response = await fetch(
-            API + "/api/favourites/" + encodeURIComponent(visitorId)
+            `${BACKEND_URL}/api/favourites/${encodeURIComponent(visitorId)}`
         );
 
         if (!response.ok) {
@@ -229,7 +234,7 @@ async function loadServerFavorites() {
         );
     } catch (error) {
         console.warn(
-            "Could not sync favourites with the server. Using local favourites.",
+            "Could not sync favourites. Using local favourites.",
             error
         );
     }
@@ -249,7 +254,6 @@ function updateFavoriteButton(item, button) {
     );
 
     button.setAttribute("aria-pressed", String(saved));
-
     button.title = saved
         ? "Remove from favourites"
         : "Add to favourites";
@@ -309,7 +313,7 @@ function loadAllMenus() {
     Promise.all(
         canteens.map(function (canteen) {
             return fetch(
-                API + "/api/menu/" + encodeURIComponent(canteen)
+                `${BACKEND_URL}/api/menu/${encodeURIComponent(canteen)}`
             )
                 .then(function (response) {
                     if (!response.ok) {
@@ -330,7 +334,7 @@ function loadAllMenus() {
                     return data.map(function (item) {
                         return {
                             ...item,
-                            canteen: canteen
+                            canteen
                         };
                     });
                 });
@@ -363,13 +367,13 @@ function loadAllMenus() {
 
                 if (paragraph) {
                     paragraph.textContent =
-                        "Could not load the menu. Please check the backend connection and try again.";
+                        "Could not load the menu. Please check the backend connection.";
                 }
             }
 
             if (resultSummary) {
                 resultSummary.textContent =
-                    "Menu could not be loaded. Check the console for details.";
+                    "Menu could not be loaded. Check the console.";
             }
         });
 }
@@ -554,9 +558,7 @@ function displayMenu() {
     filteredItems.forEach(function (item) {
         const category = item.category || "Other";
 
-        if (!grouped[category]) {
-            grouped[category] = [];
-        }
+        if (!grouped[category]) grouped[category] = [];
 
         grouped[category].push(item);
     });
@@ -589,22 +591,22 @@ function createFoodCard(item) {
     const card = document.createElement("article");
     card.className = "menu-item";
 
-    // Food image.
+    // Food image: directly loads a .webp file from Render.
+    // There is NO call to the old /api/food-image endpoint.
     const image = document.createElement("img");
+
     image.className = "food-image";
     image.alt = item.item_name || "Food item";
     image.loading = "lazy";
     image.decoding = "async";
-
-    // Fallback shown if the image does not exist.
-    const imageFallback = document.createElement("div");
-    imageFallback.className = "image-fallback";
-    imageFallback.textContent = "🍽️ " + (item.item_name || "Campus Food");
-    imageFallback.hidden = true;
-
-    // Veg Puff becomes:
-    // https://campus-connect-1-0q94.onrender.com/food-images/veg-puff.webp
     image.src = getImageUrl(item.item_name);
+
+    // If an image is missing, display a clean fallback instead
+    // of repeatedly requesting another image or API endpoint.
+    const imageFallback = document.createElement("div");
+    imageFallback.className = "food-image-fallback";
+    imageFallback.textContent = item.item_name || "Campus Food";
+    imageFallback.hidden = true;
 
     image.onerror = function () {
         image.onerror = null;
@@ -687,6 +689,7 @@ function createFoodCard(item) {
 
     bottom.append(price, availability);
     details.append(badge, title, description, bottom, addButton);
+
     card.append(image, imageFallback, favoriteButton, details);
 
     return card;
