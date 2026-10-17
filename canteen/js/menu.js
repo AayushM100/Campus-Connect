@@ -1,3 +1,4 @@
+
 "use strict";
 
 // =====================================================
@@ -14,56 +15,28 @@ const clearFiltersButton = document.querySelector("#clearFilters");
 
 const API =
     window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1"
+    window.location.hostname === "127.0.0.1"
         ? "http://localhost:3000"
         : "";
 
+// Render backend URL used specifically for food images.
+const IMAGE_API = "https://campus-connect-1-0q94.onrender.com";
 
-// Add this helper function at the top of your js/menu.js file
+// =====================================================
+// 2. FOOD IMAGE URL
+// =====================================================
+
 function getImageUrl(itemName) {
-    // Converts "Veg Puff" to "veg-puff.webp"
-    const formattedName = itemName.toLowerCase().trim().replace(/\s+/g, '-');
-    // Replace with your actual Render backend URL
-    return `https://campus-connect-1-0q94.onrender.com/food-images/${formattedName}.webp`;
-}
+    const formattedName = String(itemName || "")
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-");
 
-// Locate where you build the HTML for each item card in menu.js, and update it to include the <img> tag:
-function createCardHTML(item) {
-    const imageUrl = getImageUrl(item.item_name);
-    
-    return `
-        <div class="food-card">
-            <!-- New Image Tag for Instant Loading & High Quality -->
-            <img 
-                src="${imageUrl}" 
-                alt="${item.item_name}" 
-                loading="lazy" 
-                decoding="async"
-                class="food-card-image"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-            />
-            <!-- Fallback text/placeholder if image doesn't exist yet -->
-            <div class="image-fallback" style="display: none; height: 150px; background: #f0f0f0; text-align: center; line-height: 150px;">
-                ${item.item_name}
-            </div>
-
-            <div class="card-content">
-                <span class="canteen-badge">${item.canteen || 'Nescafe'}</span>
-                <h3>${item.item_name}</h3>
-                <p>${item.description || ''}</p>
-                <div class="card-footer">
-                    <span class="price">₹${item.price}</span>
-                    <button class="add-to-cart" onclick="addToCart('${item.item_id}')">
-                        🛒 Add to Cart
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
+    return `${IMAGE_API}/food-images/${formattedName}.webp`;
 }
 
 // =====================================================
-// 2. CANTEEN AND CATEGORY DATA
+// 3. CANTEEN AND CATEGORY DATA
 // =====================================================
 
 const canteenNames = {
@@ -108,11 +81,9 @@ let selectedFilter = "all";
 let selectedCategory = "all";
 
 // =====================================================
-// 3. FAVOURITES
+// 4. FAVOURITES
 // =====================================================
 
-// A stable browser ID lets the backend associate favourites
-// with the same browser after a refresh.
 function getVisitorId() {
     const storageKey = "campusBitesVisitorId";
 
@@ -122,12 +93,12 @@ function getVisitorId() {
         if (!visitorId) {
             visitorId =
                 window.crypto &&
-                    typeof window.crypto.randomUUID === "function"
+                typeof window.crypto.randomUUID === "function"
                     ? window.crypto.randomUUID()
                     : "visitor-" +
-                    Date.now() +
-                    "-" +
-                    Math.random().toString(36).slice(2);
+                      Date.now() +
+                      "-" +
+                      Math.random().toString(36).slice(2);
 
             localStorage.setItem(storageKey, visitorId);
         }
@@ -176,9 +147,6 @@ function isFavorite(item) {
     return favoriteFoods.includes(getFoodKey(item));
 }
 
-// Save or remove one favourite in the database.
-// The payload names match the backend routes.
-
 async function sendFavoriteToServer(item, shouldSave) {
     const payload = {
         visitorId: visitorId,
@@ -198,9 +166,7 @@ async function sendFavoriteToServer(item, shouldSave) {
         const data = await response.json();
 
         if (!response.ok || data.success !== true) {
-            throw new Error(
-                data.error || "HTTP " + response.status
-            );
+            throw new Error(data.error || "HTTP " + response.status);
         }
 
         return true;
@@ -211,10 +177,6 @@ async function sendFavoriteToServer(item, shouldSave) {
     }
 }
 
-
-// Load favourites saved for this browser from the backend.
-// Merge them with older favourites stored locally, then sync
-// any local favourites that are missing from the database.
 async function loadServerFavorites() {
     try {
         const response = await fetch(
@@ -239,7 +201,6 @@ async function loadServerFavorites() {
         });
 
         const serverKeySet = new Set(serverKeys);
-
         const localKeysBeforeMerge = new Set(favoriteFoods);
 
         favoriteFoods = Array.from(
@@ -248,7 +209,6 @@ async function loadServerFavorites() {
 
         saveFavorites();
 
-        // Import favourites from localStorage that are not in the DB.
         const localItemsToSync = allMenuItems.filter(function (item) {
             const key = getFoodKey(item);
 
@@ -289,11 +249,11 @@ function updateFavoriteButton(item, button) {
     );
 
     button.setAttribute("aria-pressed", String(saved));
+
     button.title = saved
         ? "Remove from favourites"
         : "Add to favourites";
 }
-
 
 async function toggleFavorite(item, button) {
     if (button.disabled) return;
@@ -330,9 +290,8 @@ async function toggleFavorite(item, button) {
     }
 }
 
-
 // =====================================================
-// 4. LOAD ALL THREE CANTEEN MENUS
+// 5. LOAD ALL THREE CANTEEN MENUS
 // =====================================================
 
 function loadAllMenus() {
@@ -380,17 +339,13 @@ function loadAllMenus() {
         .then(function (results) {
             allMenuItems = results.flat();
 
-            console.log(
-                "Menu items loaded:",
-                allMenuItems.length
-            );
+            console.log("Menu items loaded:", allMenuItems.length);
 
             initialiseFiltersFromURL();
             updateFilterButtons();
             updateCategoryButtons();
             displayMenu();
 
-            // Menu data must load before syncing local favourites.
             loadServerFavorites();
         })
         .catch(function (error) {
@@ -404,9 +359,7 @@ function loadAllMenus() {
                 const heading = noResults.querySelector("h2");
                 const paragraph = noResults.querySelector("p");
 
-                if (heading) {
-                    heading.textContent = "Menu unavailable";
-                }
+                if (heading) heading.textContent = "Menu unavailable";
 
                 if (paragraph) {
                     paragraph.textContent =
@@ -422,7 +375,7 @@ function loadAllMenus() {
 }
 
 // =====================================================
-// 5. READ URL PARAMETERS
+// 6. READ URL PARAMETERS
 // =====================================================
 
 function initialiseFiltersFromURL() {
@@ -460,7 +413,7 @@ function initialiseFiltersFromURL() {
 }
 
 // =====================================================
-// 6. UPDATE FILTER BUTTONS
+// 7. UPDATE FILTER BUTTONS
 // =====================================================
 
 function updateFilterButtons() {
@@ -489,7 +442,7 @@ function updateCategoryButtons() {
 }
 
 // =====================================================
-// 7. CHECK FOOD-TYPE FILTERS
+// 8. CHECK FOOD-TYPE FILTERS
 // =====================================================
 
 function matchesFoodFilter(item, filter) {
@@ -505,7 +458,7 @@ function matchesFoodFilter(item, filter) {
 }
 
 // =====================================================
-// 8. UPDATE MENU TITLE
+// 9. UPDATE MENU TITLE
 // =====================================================
 
 function updateTitle() {
@@ -526,7 +479,7 @@ function updateTitle() {
 }
 
 // =====================================================
-// 9. SEARCH AND DISPLAY MENU ITEMS
+// 10. SEARCH AND DISPLAY MENU ITEMS
 // =====================================================
 
 function displayMenu() {
@@ -581,14 +534,12 @@ function displayMenu() {
             const heading = noResults.querySelector("h2");
             const paragraph = noResults.querySelector("p");
 
-            if (heading) {
-                heading.textContent = "No food items found";
-            }
+            if (heading) heading.textContent = "No food items found";
 
             if (paragraph) {
                 paragraph.textContent = searchText
                     ? 'No dishes match "' + searchText +
-                    '". Try another search or clear your filters.'
+                      '". Try another search or clear your filters.'
                     : "Try selecting another canteen or food type.";
             }
         }
@@ -631,52 +582,40 @@ function displayMenu() {
 }
 
 // =====================================================
-// 10. CREATE FOOD CARD
+// 11. CREATE FOOD CARD
 // =====================================================
 
 function createFoodCard(item) {
     const card = document.createElement("article");
     card.className = "menu-item";
 
-    // Food image placeholder.
+    // Food image.
     const image = document.createElement("img");
     image.className = "food-image";
     image.alt = item.item_name || "Food item";
     image.loading = "lazy";
+    image.decoding = "async";
 
-    image.src =
-        "https://placehold.co/600x400/f3eee9/76675e?text=" +
-        encodeURIComponent(item.item_name || "Campus Food");
+    // Fallback shown if the image does not exist.
+    const imageFallback = document.createElement("div");
+    imageFallback.className = "image-fallback";
+    imageFallback.textContent = "🍽️ " + (item.item_name || "Campus Food");
+    imageFallback.hidden = true;
+
+    // Veg Puff becomes:
+    // https://campus-connect-1-0q94.onrender.com/food-images/veg-puff.webp
+    image.src = getImageUrl(item.item_name);
 
     image.onerror = function () {
         image.onerror = null;
-        image.src =
-            "https://placehold.co/600x400/f3eee9/76675e?text=Campus+Food";
+        image.hidden = true;
+        imageFallback.hidden = false;
     };
 
-    // Request the image from the backend.
-    fetch(
-        API + "/api/food-image/" +
-        encodeURIComponent(item.canteen) + "/" +
-        encodeURIComponent(item.item_name)
-    )
-        .then(function (response) {
-            if (!response.ok) throw new Error("Image unavailable");
-            return response.json();
-        })
-        .then(function (data) {
-            if (data && data.image) {
-                image.src = data.image.startsWith("/")
-                    ? API + data.image
-                    : data.image;
-            }
-        })
-        .catch(function (error) {
-            console.warn(
-                "Could not load image for " + item.item_name,
-                error
-            );
-        });
+    image.onload = function () {
+        image.hidden = false;
+        imageFallback.hidden = true;
+    };
 
     // Favourite button.
     const favoriteButton = document.createElement("button");
@@ -748,13 +687,13 @@ function createFoodCard(item) {
 
     bottom.append(price, availability);
     details.append(badge, title, description, bottom, addButton);
-    card.append(image, favoriteButton, details);
+    card.append(image, imageFallback, favoriteButton, details);
 
     return card;
 }
 
 // =====================================================
-// 11. CANTEEN FILTER BUTTONS
+// 12. CANTEEN FILTER BUTTONS
 // =====================================================
 
 document.querySelectorAll(".canteen-filter").forEach(function (button) {
@@ -767,7 +706,7 @@ document.querySelectorAll(".canteen-filter").forEach(function (button) {
 });
 
 // =====================================================
-// 12. FOOD-TYPE FILTER BUTTONS
+// 13. FOOD-TYPE FILTER BUTTONS
 // =====================================================
 
 document.querySelectorAll(".food-filter").forEach(function (button) {
@@ -782,7 +721,7 @@ document.querySelectorAll(".food-filter").forEach(function (button) {
 });
 
 // =====================================================
-// 13. SEARCH BAR
+// 14. SEARCH BAR
 // =====================================================
 
 if (searchInput) {
@@ -803,7 +742,7 @@ if (clearSearchButton) {
 }
 
 // =====================================================
-// 14. CLEAR ALL FILTERS
+// 15. CLEAR ALL FILTERS
 // =====================================================
 
 if (clearFiltersButton) {
@@ -826,10 +765,8 @@ if (clearFiltersButton) {
     });
 }
 
-
-
 // =====================================================
-// 15. START
+// 16. START
 // =====================================================
 
 loadAllMenus();
