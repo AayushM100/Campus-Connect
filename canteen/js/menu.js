@@ -24,7 +24,7 @@ function getImageUrl(itemName) {
     // Converts "Veg Puff" to "veg-puff.webp"
     const formattedName = itemName.toLowerCase().trim().replace(/\s+/g, '-');
     // Replace with your actual Render backend URL
-    return `https://your-backend-url.onrender.com/food-images/${formattedName}.webp`;
+    return `https://campus-connect-1-0q94.onrender.com/food-images/${formattedName}.webp`;
 }
 
 // Locate where you build the HTML for each item card in menu.js, and update it to include the <img> tag:
