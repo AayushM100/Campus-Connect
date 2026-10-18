@@ -306,66 +306,148 @@ async function toggleFavorite(item, button) {
 }
 
 
+// =====================================================
+// CANTEEN OPEN / CLOSED CHECK (India Standard Time)
+// =====================================================
+
 function checkCanteenStatus() {
-    // Force India Standard Time (IST) regardless of the user's device settings
-    const istTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-    
-    const dayOfWeek = istTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const currentHour = istTime.getHours(); // 24-hour format (0-23)
-    
-    // Format YYYY-MM-DD for holiday checking
+    // Force IST regardless of the user's device settings
+    const istTime = new Date(
+        new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+
+    const dayOfWeek = istTime.getDay();     // 0 = Sunday
+    const currentHour = istTime.getHours(); // 0-23
+
     const year = istTime.getFullYear();
-    const month = String(istTime.getMonth() + 1).padStart(2, '0');
-    const date = String(istTime.getDate()).padStart(2, '0');
+    const month = String(istTime.getMonth() + 1).padStart(2, "0");
+    const date = String(istTime.getDate()).padStart(2, "0");
     const todayDate = `${year}-${month}-${date}`;
 
     // --- SCHEDULE CONFIGURATION ---
-    const openingHour = 9;  // 9:00 AM
-    const closingHour = 17; // 5:00 PM (17:00)
-    const closedDays = [0]; // 0 = Sunday (Add 6 if closed on Saturdays)
-    const holidays = ["2026-10-31", "2026-11-01"]; // Add custom YYYY-MM-DD college holidays here
+    const openingHour = 9;   // 9:00 AM
+    const closingHour = 17;  // 5:00 PM
+    const closedDays = [0];  // 0 = Sunday (add 6 for Saturday)
+    const holidays = ["2026-10-31", "2026-11-01"]; // YYYY-MM-DD
     // ------------------------------
 
-    let isOpen = true;
+    if (closedDays.includes(dayOfWeek)) return false;
+    if (currentHour < openingHour || currentHour >= closingHour) return false;
+    if (holidays.includes(todayDate)) return false;
 
-    // Condition 1: Check if today is a scheduled closed day (e.g., Sunday)
-    if (closedDays.includes(dayOfWeek)) isOpen = false; 
-    
-    // Condition 2: Check if current time is outside working hours
-    if (currentHour < openingHour || currentHour >= closingHour) isOpen = false; 
-    
-    // Condition 3: Check if today matches a date in the holidays array
-    if (holidays.includes(todayDate)) isOpen = false; 
-
-    return isOpen;
+    return true;
 }
 
-// 1. Call the function to get the current true/false status
-const isOpen = checkCanteenStatus();
+// =====================================================
+// 11. CREATE FOOD CARD
+// =====================================================
 
-// 2. Set UI variables based on the status
-const statusText = isOpen ? "Available" : "CLOSED NOW";
-const statusColor = isOpen ? "#2e7d32" : "#d32f2f"; // Green for open, Red for closed
-const buttonState = isOpen ? "" : "disabled";
-const buttonOpacity = isOpen ? "1" : "0.5";
+function createFoodCard(item) {
+    const card = document.createElement("article");
+    card.className = "menu-item";
 
-// 3. Inject these variables into your existing HTML card template
-const cardHTML = `
-    <!-- Your existing card HTML -->
-    
-    <div class="price-and-status">
-        <span class="price">₹${item.price}</span>
-        <!-- Inject dynamic status text and color here -->
-        <span style="color: ${statusColor}; font-weight: bold; font-size: 0.9em;">
-            ${statusText}
-        </span>
-    </div>
-    
-    <!-- Inject the disabled attribute and opacity here -->
-    <button class="add-to-cart-btn" ${buttonState} style="opacity: ${buttonOpacity};">
-        Add to Cart
-    </button>
-`;
+    // Food image: loaded directly from the Render static folder.
+    const image = document.createElement("img");
+    image.className = "food-image";
+    image.alt = item.item_name || "Food item";
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.src = getImageUrl(item.item_name);
+
+    // Use a placeholder if the requested image does not exist.
+    image.onerror = function () {
+        image.onerror = null;
+        image.src =
+            "https://placehold.co/600x400/f3eee9/76675e?text=" +
+            encodeURIComponent(item.item_name || "Campus Food");
+    };
+
+    // Favourite button.
+    const favoriteButton = document.createElement("button");
+    favoriteButton.type = "button";
+    favoriteButton.className = "food-favorite";
+    favoriteButton.dataset.foodKey = getFoodKey(item);
+
+    updateFavoriteButton(item, favoriteButton);
+
+    favoriteButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleFavorite(item, favoriteButton);
+    });
+
+    // Food details.
+    const details = document.createElement("div");
+    details.className = "item-details";
+
+    const badge = document.createElement("span");
+    badge.className = "canteen-badge";
+    badge.textContent = canteenNames[item.canteen] || item.canteen;
+
+    const title = document.createElement("h3");
+    title.textContent = item.item_name || "Unnamed item";
+
+    const description = document.createElement("p");
+    description.className = "item-description";
+    description.textContent =
+        item.description || "A campus favourite.";
+
+    const bottom = document.createElement("div");
+    bottom.className = "item-bottom";
+
+    const price = document.createElement("strong");
+    price.className = "item-price";
+    price.textContent = "₹" + Number(item.price || 0);
+
+    // Availability: closed canteen OR item marked unavailable
+    const availability = document.createElement("span");
+    availability.className = "availability";
+
+    const availabilityText = String(item.availability || "Available");
+    const lowerAvailability = availabilityText.toLowerCase();
+
+    const canteenOpen = checkCanteenStatus();
+    const itemAvailable =
+        !lowerAvailability.includes("not") &&
+        !lowerAvailability.includes("unavailable");
+    const canOrder = canteenOpen && itemAvailable;
+
+    availability.textContent = canteenOpen
+        ? availabilityText
+        : "CLOSED NOW";
+    availability.classList.toggle("unavailable", !canOrder);
+
+    // Add to cart.
+    const addButton = document.createElement("button");
+    addButton.className = "add-cart";
+    addButton.type = "button";
+    addButton.textContent = "🛒 Add to Cart";
+
+    if (!canOrder) {
+        addButton.disabled = true;
+        addButton.style.opacity = "0.5";
+        addButton.style.cursor = "not-allowed";
+    }
+
+    addButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!canOrder) return;
+
+        if (typeof window.addToCart === "function") {
+            window.addToCart(item, addButton);
+        } else {
+            alert("Cart script is not loaded. Please check js/cart.js.");
+        }
+    });
+
+    bottom.append(price, availability);
+    details.append(badge, title, description, bottom, addButton);
+    card.append(image, favoriteButton, details);
+
+    return card;
+}
 
 
 // =====================================================
