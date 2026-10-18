@@ -36,7 +36,10 @@ function formatTime(decimalTime) {
 }
 
 function updateCanteenHours() {
-    const now = new Date();
+    // Force India Standard Time regardless of the device settings
+    const now = new Date(
+        new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
     const currentTime = now.getHours() + now.getMinutes() / 60;
 
     canteenCards.forEach(function (card) {
