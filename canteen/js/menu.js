@@ -305,6 +305,69 @@ async function toggleFavorite(item, button) {
     }
 }
 
+
+function checkCanteenStatus() {
+    // Force India Standard Time (IST) regardless of the user's device settings
+    const istTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    
+    const dayOfWeek = istTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentHour = istTime.getHours(); // 24-hour format (0-23)
+    
+    // Format YYYY-MM-DD for holiday checking
+    const year = istTime.getFullYear();
+    const month = String(istTime.getMonth() + 1).padStart(2, '0');
+    const date = String(istTime.getDate()).padStart(2, '0');
+    const todayDate = `${year}-${month}-${date}`;
+
+    // --- SCHEDULE CONFIGURATION ---
+    const openingHour = 9;  // 9:00 AM
+    const closingHour = 17; // 5:00 PM (17:00)
+    const closedDays = [0]; // 0 = Sunday (Add 6 if closed on Saturdays)
+    const holidays = ["2026-10-31", "2026-11-01"]; // Add custom YYYY-MM-DD college holidays here
+    // ------------------------------
+
+    let isOpen = true;
+
+    // Condition 1: Check if today is a scheduled closed day (e.g., Sunday)
+    if (closedDays.includes(dayOfWeek)) isOpen = false; 
+    
+    // Condition 2: Check if current time is outside working hours
+    if (currentHour < openingHour || currentHour >= closingHour) isOpen = false; 
+    
+    // Condition 3: Check if today matches a date in the holidays array
+    if (holidays.includes(todayDate)) isOpen = false; 
+
+    return isOpen;
+}
+
+// 1. Call the function to get the current true/false status
+const isOpen = checkCanteenStatus();
+
+// 2. Set UI variables based on the status
+const statusText = isOpen ? "Available" : "CLOSED NOW";
+const statusColor = isOpen ? "#2e7d32" : "#d32f2f"; // Green for open, Red for closed
+const buttonState = isOpen ? "" : "disabled";
+const buttonOpacity = isOpen ? "1" : "0.5";
+
+// 3. Inject these variables into your existing HTML card template
+const cardHTML = `
+    <!-- Your existing card HTML -->
+    
+    <div class="price-and-status">
+        <span class="price">₹${item.price}</span>
+        <!-- Inject dynamic status text and color here -->
+        <span style="color: ${statusColor}; font-weight: bold; font-size: 0.9em;">
+            ${statusText}
+        </span>
+    </div>
+    
+    <!-- Inject the disabled attribute and opacity here -->
+    <button class="add-to-cart-btn" ${buttonState} style="opacity: ${buttonOpacity};">
+        Add to Cart
+    </button>
+`;
+
+
 // =====================================================
 // 5. LOAD ALL THREE CANTEEN MENUS
 // =====================================================
