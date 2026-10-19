@@ -342,27 +342,59 @@ function checkCanteenStatus() {
 // 11. CREATE FOOD CARD
 // =====================================================
 
+
 function createFoodCard(item) {
     const card = document.createElement("article");
     card.className = "menu-item";
 
-    // Food image: loaded directly from the Render static folder.
+    // =====================================================
+    // 1. CHECK FOOD AVAILABILITY
+    // =====================================================
+
+    // Compare using lowercase so capitalization doesn't matter.
+    const unavailableItems = ["samosa", "vada pav"];
+
+    const itemName = String(item.item_name || "").trim();
+    const isTemporarilyUnavailable =
+        unavailableItems.includes(itemName.toLowerCase());
+
+    // Preserve any other availability information from the database.
+    const databaseAvailability = String(
+        item.availability || "Available"
+    );
+
+    const isUnavailable =
+        isTemporarilyUnavailable ||
+        databaseAvailability.toLowerCase().includes("unavailable") ||
+        databaseAvailability.toLowerCase().includes("not available");
+
+    const availabilityText = isUnavailable
+        ? "Not Available"
+        : databaseAvailability;
+
+    // =====================================================
+    // 2. FOOD IMAGE
+    // =====================================================
+
     const image = document.createElement("img");
     image.className = "food-image";
-    image.alt = item.item_name || "Food item";
+    image.alt = itemName || "Food item";
     image.loading = "lazy";
     image.decoding = "async";
-    image.src = getImageUrl(item.item_name);
+    image.src = getImageUrl(itemName);
 
-    // Use a placeholder if the requested image does not exist.
+    // Display a placeholder if the image cannot be loaded.
     image.onerror = function () {
         image.onerror = null;
         image.src =
             "https://placehold.co/600x400/f3eee9/76675e?text=" +
-            encodeURIComponent(item.item_name || "Campus Food");
+            encodeURIComponent(itemName || "Campus Food");
     };
 
-    // Favourite button.
+    // =====================================================
+    // 3. FAVOURITE BUTTON
+    // =====================================================
+
     const favoriteButton = document.createElement("button");
     favoriteButton.type = "button";
     favoriteButton.className = "food-favorite";
@@ -376,21 +408,29 @@ function createFoodCard(item) {
         toggleFavorite(item, favoriteButton);
     });
 
-    // Food details.
+    // =====================================================
+    // 4. FOOD DETAILS
+    // =====================================================
+
     const details = document.createElement("div");
     details.className = "item-details";
 
     const badge = document.createElement("span");
     badge.className = "canteen-badge";
-    badge.textContent = canteenNames[item.canteen] || item.canteen;
+    badge.textContent =
+        canteenNames[item.canteen] || item.canteen;
 
     const title = document.createElement("h3");
-    title.textContent = item.item_name || "Unnamed item";
+    title.textContent = itemName || "Unnamed item";
 
     const description = document.createElement("p");
     description.className = "item-description";
     description.textContent =
         item.description || "A campus favourite.";
+
+    // =====================================================
+    // 5. PRICE AND AVAILABILITY STATUS
+    // =====================================================
 
     const bottom = document.createElement("div");
     bottom.className = "item-bottom";
@@ -399,48 +439,54 @@ function createFoodCard(item) {
     price.className = "item-price";
     price.textContent = "₹" + Number(item.price || 0);
 
-    // Availability: closed canteen OR item marked unavailable
     const availability = document.createElement("span");
     availability.className = "availability";
+    availability.textContent = availabilityText;
 
-    const availabilityText = String(item.availability || "Available");
-    const lowerAvailability = availabilityText.toLowerCase();
+    // Red for unavailable items; retain existing styling otherwise.
+    if (isUnavailable) {
+        availability.classList.add("unavailable");
+        availability.style.color = "#d32f2f";
+    } else {
+        availability.style.color = "#2e7d32";
+    }
 
-    const canteenOpen = checkCanteenStatus();
-    const itemAvailable =
-        !lowerAvailability.includes("not") &&
-        !lowerAvailability.includes("unavailable");
-    const canOrder = canteenOpen && itemAvailable;
+    // =====================================================
+    // 6. ADD TO CART BUTTON
+    // =====================================================
 
-    availability.textContent = canteenOpen
-        ? availabilityText
-        : "CLOSED NOW";
-    availability.classList.toggle("unavailable", !canOrder);
-
-    // Add to cart.
     const addButton = document.createElement("button");
     addButton.className = "add-cart";
     addButton.type = "button";
-    addButton.textContent = "🛒 Add to Cart";
 
-    if (!canOrder) {
+    if (isUnavailable) {
+        addButton.textContent = "Currently Unavailable";
         addButton.disabled = true;
         addButton.style.opacity = "0.5";
         addButton.style.cursor = "not-allowed";
+    } else {
+        addButton.textContent = "🛒 Add to Cart";
     }
 
     addButton.addEventListener("click", function (event) {
         event.preventDefault();
         event.stopPropagation();
 
-        if (!canOrder) return;
+        // Safety check: unavailable food cannot be added.
+        if (isUnavailable) return;
 
         if (typeof window.addToCart === "function") {
             window.addToCart(item, addButton);
         } else {
-            alert("Cart script is not loaded. Please check js/cart.js.");
+            alert(
+                "Cart script is not loaded. Please check js/cart.js."
+            );
         }
     });
+
+    // =====================================================
+    // 7. ASSEMBLE THE CARD
+    // =====================================================
 
     bottom.append(price, availability);
     details.append(badge, title, description, bottom, addButton);
@@ -448,6 +494,7 @@ function createFoodCard(item) {
 
     return card;
 }
+
 
 
 // =====================================================
@@ -541,6 +588,9 @@ function loadAllMenus() {
             }
         });
 }
+
+
+const unavailableItems = ["Samosa", "Vada Pav"];
 
 // =====================================================
 // 6. READ URL PARAMETERS
@@ -751,27 +801,59 @@ function displayMenu() {
 // 11. CREATE FOOD CARD
 // =====================================================
 
+
 function createFoodCard(item) {
     const card = document.createElement("article");
     card.className = "menu-item";
 
-    // Food image: loaded directly from the Render static folder.
+    // =====================================================
+    // 1. CHECK FOOD AVAILABILITY
+    // =====================================================
+
+    // Compare using lowercase so capitalization doesn't matter.
+    const unavailableItems = ["samosa", "vada pav"];
+
+    const itemName = String(item.item_name || "").trim();
+    const isTemporarilyUnavailable =
+        unavailableItems.includes(itemName.toLowerCase());
+
+    // Preserve any other availability information from the database.
+    const databaseAvailability = String(
+        item.availability || "Available"
+    );
+
+    const isUnavailable =
+        isTemporarilyUnavailable ||
+        databaseAvailability.toLowerCase().includes("unavailable") ||
+        databaseAvailability.toLowerCase().includes("not available");
+
+    const availabilityText = isUnavailable
+        ? "Not Available"
+        : databaseAvailability;
+
+    // =====================================================
+    // 2. FOOD IMAGE
+    // =====================================================
+
     const image = document.createElement("img");
     image.className = "food-image";
-    image.alt = item.item_name || "Food item";
+    image.alt = itemName || "Food item";
     image.loading = "lazy";
     image.decoding = "async";
-    image.src = getImageUrl(item.item_name);
+    image.src = getImageUrl(itemName);
 
-    // Use a placeholder if the requested image does not exist.
+    // Display a placeholder if the image cannot be loaded.
     image.onerror = function () {
         image.onerror = null;
         image.src =
             "https://placehold.co/600x400/f3eee9/76675e?text=" +
-            encodeURIComponent(item.item_name || "Campus Food");
+            encodeURIComponent(itemName || "Campus Food");
     };
 
-    // Favourite button.
+    // =====================================================
+    // 3. FAVOURITE BUTTON
+    // =====================================================
+
     const favoriteButton = document.createElement("button");
     favoriteButton.type = "button";
     favoriteButton.className = "food-favorite";
@@ -785,21 +867,29 @@ function createFoodCard(item) {
         toggleFavorite(item, favoriteButton);
     });
 
-    // Food details.
+    // =====================================================
+    // 4. FOOD DETAILS
+    // =====================================================
+
     const details = document.createElement("div");
     details.className = "item-details";
 
     const badge = document.createElement("span");
     badge.className = "canteen-badge";
-    badge.textContent = canteenNames[item.canteen] || item.canteen;
+    badge.textContent =
+        canteenNames[item.canteen] || item.canteen;
 
     const title = document.createElement("h3");
-    title.textContent = item.item_name || "Unnamed item";
+    title.textContent = itemName || "Unnamed item";
 
     const description = document.createElement("p");
     description.className = "item-description";
     description.textContent =
         item.description || "A campus favourite.";
+
+    // =====================================================
+    // 5. PRICE AND AVAILABILITY STATUS
+    // =====================================================
 
     const bottom = document.createElement("div");
     bottom.className = "item-bottom";
@@ -810,35 +900,52 @@ function createFoodCard(item) {
 
     const availability = document.createElement("span");
     availability.className = "availability";
-
-    const availabilityText = String(item.availability || "Available");
     availability.textContent = availabilityText;
 
-    const lowerAvailability = availabilityText.toLowerCase();
-
-    if (
-        lowerAvailability.includes("not") ||
-        lowerAvailability.includes("unavailable")
-    ) {
+    // Red for unavailable items; retain existing styling otherwise.
+    if (isUnavailable) {
         availability.classList.add("unavailable");
+        availability.style.color = "#d32f2f";
+    } else {
+        availability.style.color = "#2e7d32";
     }
 
-    // Add to cart.
+    // =====================================================
+    // 6. ADD TO CART BUTTON
+    // =====================================================
+
     const addButton = document.createElement("button");
     addButton.className = "add-cart";
     addButton.type = "button";
-    addButton.textContent = "🛒 Add to Cart";
+
+    if (isUnavailable) {
+        addButton.textContent = "Currently Unavailable";
+        addButton.disabled = true;
+        addButton.style.opacity = "0.5";
+        addButton.style.cursor = "not-allowed";
+    } else {
+        addButton.textContent = "🛒 Add to Cart";
+    }
 
     addButton.addEventListener("click", function (event) {
         event.preventDefault();
         event.stopPropagation();
 
+        // Safety check: unavailable food cannot be added.
+        if (isUnavailable) return;
+
         if (typeof window.addToCart === "function") {
             window.addToCart(item, addButton);
         } else {
-            alert("Cart script is not loaded. Please check js/cart.js.");
+            alert(
+                "Cart script is not loaded. Please check js/cart.js."
+            );
         }
     });
+
+    // =====================================================
+    // 7. ASSEMBLE THE CARD
+    // =====================================================
 
     bottom.append(price, availability);
     details.append(badge, title, description, bottom, addButton);
@@ -846,6 +953,7 @@ function createFoodCard(item) {
 
     return card;
 }
+
 
 // =====================================================
 // 12. CANTEEN FILTER BUTTONS
