@@ -98,68 +98,56 @@ app.get("/api/canteens", (req, res) => {
 // 7. GET ALL MENU ITEMS
 // ======================================================
 
-app.get("/api/menu", (req, res) => {
-    const sql = `
-        SELECT item_id, item_name, category, price,
-               availability, description, 'cafeteria' AS canteen
-        FROM campus_cafeteria
-
-        UNION ALL
-
-        SELECT item_id, item_name, category, price,
-               availability, description, 'timeless' AS canteen
-        FROM cafe_timeless
-
-        UNION ALL
-
-        SELECT item_id, item_name, category, price,
-               availability, description, 'nescafe' AS canteen
-        FROM nescafe
-    `;
-
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error("All menu query error:", err.message);
-            return res.status(500).json({
-                error: "Failed to fetch all menus"
-            });
-        }
-
-        res.json(results);
-    });
+// Route 1: Get ALL menu items (used by Browse Cuisine / menu.html)
+app.get("/api/menu", async (req, res) => {
+    try {
+        const rows = await query(`
+            SELECT
+                id,
+                canteen,
+                item_name AS name,
+                category,
+                price,
+                availability,
+                description,
+                is_available
+            FROM \`${process.env.DB_NAME}\`.menu_items
+            ORDER BY id
+        `);
+        res.json(rows);
+    } catch (err) {
+        handleRouteError("Main menu query failed:", res, err);
+    }
 });
 
-// ======================================================
-// 8. GET MENU BY CANTEEN
-// ======================================================
+// Route 2: Get menu items for a specific canteen
+app.get("/api/menu/:canteen", async (req, res) => {
+    const canteenInfo = getCanteen(req.params.canteen);
 
-app.get("/api/menu/:canteen", (req, res) => {
-    const canteenId = req.params.canteen.toLowerCase();
-    const canteen = getCanteen(canteenId);
-
-    if (!canteen) {
-        return res.status(404).json({
-            error: "Canteen not found"
-        });
+    if (!canteenInfo) {
+        return res.status(404).json({ error: "Canteen not found" });
     }
 
-    const sql = `
-        SELECT item_id, item_name, category, price,
-               availability, description
-        FROM ${canteen.table}
-        ORDER BY item_id
-    `;
+    try {
+        const rows = await query(`
+            SELECT
+                id,
+                canteen,
+                item_name AS name,
+                category,
+                price,
+                availability,
+                description,
+                is_available
+            FROM \`${process.env.DB_NAME}\`.menu_items
+            WHERE canteen = ?
+            ORDER BY id
+        `, [req.params.canteen]);
 
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error("Menu query error:", err.message);
-            return res.status(500).json({
-                error: "Failed to fetch menu"
-            });
-        }
-
-        res.json(results);
-    });
+        res.json(rows);
+    } catch (err) {
+        handleRouteError("Canteen menu query failed:", res, err);
+    }
 });
 
 // ======================================================
