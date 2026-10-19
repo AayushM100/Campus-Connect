@@ -1,12 +1,3 @@
-// ======================================================
-// CAMPUS CONNECT - CANTEENS BACKEND
-// Database: campus_canteen
-// Uses the existing canteen tables:
-//   campus_canteen.campus_cafeteria
-//   campus_canteen.cafe_timeless
-//   campus_canteen.nescafe
-// ======================================================
-
 "use strict";
 
 require("dotenv").config();
@@ -22,135 +13,92 @@ const DB = "campus_canteen";
 
 app.use(cors());
 app.use(express.json());
+
 app.use(
     "/food-images",
     express.static(path.join(__dirname, "food-images"))
 );
 
-// Connect to MySQL.
+// =====================================================
+// 1. DATABASE CONNECTION
+// =====================================================
+
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     port: Number(process.env.DB_PORT || 3306),
+    database: DB,
     ssl: process.env.DB_SSL === "true"
         ? { rejectUnauthorized: false }
         : undefined
 });
 
-db.connect((err) => {
-    if (err) {
-        console.error("MySQL connection failed:", err.message);
+db.connect((error) => {
+    if (error) {
+        console.error("MySQL connection failed:", error.message);
         return;
     }
 
-    console.log("MySQL server connected.");
+    console.log("Connected to MySQL.");
 
     db.query(
-        `SELECT 1 FROM ${DB}.campus_cafeteria LIMIT 1`,
-        (error) => {
-            if (error) {
+        "SELECT id, is_available FROM menu_items LIMIT 1",
+        (queryError) => {
+            if (queryError) {
                 console.error(
-                    "Database/table check failed:",
-                    error.message
+                    "menu_items table check failed:",
+                    queryError.message
                 );
             } else {
-                console.log(
-                    `Database tables in ${DB} are reachable.`
-                );
+                console.log("menu_items table is accessible.");
             }
         }
     );
 });
 
-// Canteen configuration.
+// =====================================================
+// 2. CANTEEN HELPERS
+// =====================================================
+
 const canteens = {
-    cafeteria: {
-        name: "Cafeteria",
-        table: "campus_cafeteria"
-    },
-    timeless: {
-        name: "Timeless",
-        table: "cafe_timeless"
-    },
-    nescafe: {
-        name: "Nescafe",
-        table: "nescafe"
-    }
+    cafeteria: "Cafeteria",
+    timeless: "Timeless",
+    nescafe: "Nescafe"
 };
 
-function getCanteen(id) {
-    return canteens[String(id || "").toLowerCase()];
+function normaliseCanteen(value) {
+    const id = String(value || "").trim().toLowerCase();
+
+    return Object.prototype.hasOwnProperty.call(canteens, id)
+        ? id
+        : null;
 }
 
-// Build a query using the existing three tables.
-function menuUnion() {
-    return `
-        SELECT
-            CAST(item_id AS CHAR) AS item_id,
-            item_name,
-            category,
-            price,
-            availability,
-            description,
-            'cafeteria' AS canteen
-        FROM ${DB}.campus_cafeteria
-
-        UNION ALL
-
-        SELECT
-            CAST(item_id AS CHAR) AS item_id,
-            item_name,
-            category,
-            price,
-            availability,
-            description,
-            'timeless' AS canteen
-        FROM ${DB}.cafe_timeless
-
-        UNION ALL
-
-        SELECT
-            CAST(item_id AS CHAR) AS item_id,
-            item_name,
-            category,
-            price,
-            availability,
-            description,
-            'nescafe' AS canteen
-        FROM ${DB}.nescafe
-    `;
-}
-
-// Central database error response.
-// This replaces the missing handleRouteError function.
-function sendDbError(label, res, err) {
-    console.error(`${label}:`, err.message);
+function sendDbError(label, res, error) {
+    console.error(`${label}:`, error.message);
 
     return res.status(500).json({
-        error: "Database request failed",
-        details: err.message
+        error: "Database request failed"
     });
 }
 
-// Root route.
+// =====================================================
+// 3. ROOT AND HEALTH CHECK
+// =====================================================
+
 app.get("/", (req, res) => {
     res.json({
-        message: "Campus Connect Canteens Backend is running!"
+        message: "Campus Bites backend is running."
     });
 });
 
-// Health check.
 app.get("/health", (req, res) => {
     db.query(
-        `SELECT 1 FROM ${DB}.food_favourites LIMIT 1`,
-        (err) => {
-            if (err) {
-                return sendDbError(
-                    "Health check failed",
-                    res,
-                    err
-                );
+        "SELECT 1 FROM menu_items LIMIT 1",
+        (error) => {
+            if (error) {
+                return sendDbError("Health check failed", res, error);
             }
 
             res.json({
@@ -161,40 +109,62 @@ app.get("/health", (req, res) => {
     );
 });
 
-// Get all canteens.
+// =====================================================
+// 4. GET CANTEENS
+// =====================================================
+
 app.get("/api/canteens", (req, res) => {
     res.json(
-        Object.entries(canteens).map(([id, value]) => ({
+        Object.entries(canteens).map(([id, name]) => ({
             id,
-            name: value.name
+            name
         }))
     );
 });
 
-// Get all menu items.
+// =====================================================
+// 5. GET ALL MENU ITEMS
+//
+// Actual database columns:
+// id, canteen, item_name, category, price,
+// availability, description, is_available
+//
+// Alias id AS item_id for compatibility with menu.js.
+// =====================================================
+
+const menuSelect = `
+    SELECT
+        id AS item_id,
+        canteen,
+        item_name,
+        category,
+        price,
+        availability,
+        description,
+        is_available
+    FROM menu_items
+`;
+
 app.get("/api/menu", (req, res) => {
-    const sql = `${menuUnion()} ORDER BY item_name`;
+    db.query(
+        `${menuSelect} ORDER BY category, item_name`,
+        (error, rows) => {
+            if (error) {
+                return sendDbError("Get all menu items failed", res, error);
+            }
 
-    db.query(sql, (err, rows) => {
-        if (err) {
-            return sendDbError(
-                "Main menu query failed",
-                res,
-                err
-            );
+            res.set("Cache-Control", "no-store");
+            res.json(rows);
         }
-
-        res.json(rows);
-    });
+    );
 });
 
-// Get menu items for a specific canteen.
+// =====================================================
+// 6. GET MENU FOR ONE CANTEEN
+// =====================================================
+
 app.get("/api/menu/:canteen", (req, res) => {
-    const canteenId = String(
-        req.params.canteen || ""
-    ).toLowerCase();
-
-    const canteen = getCanteen(canteenId);
+    const canteen = normaliseCanteen(req.params.canteen);
 
     if (!canteen) {
         return res.status(404).json({
@@ -202,160 +172,131 @@ app.get("/api/menu/:canteen", (req, res) => {
         });
     }
 
-    const sql = `
-        SELECT
-            CAST(item_id AS CHAR) AS item_id,
-            item_name,
-            category,
-            price,
-            availability,
-            description,
-            '${canteenId}' AS canteen
-        FROM ${DB}.${canteen.table}
-        ORDER BY item_id
-    `;
+    db.query(
+        `${menuSelect} WHERE LOWER(canteen) = ? ORDER BY id`,
+        [canteen],
+        (error, rows) => {
+            if (error) {
+                return sendDbError("Get canteen menu failed", res, error);
+            }
 
-    db.query(sql, (err, rows) => {
-        if (err) {
-            return sendDbError(
-                "Canteen menu query failed",
-                res,
-                err
-            );
+            res.set("Cache-Control", "no-store");
+            res.json(rows);
         }
-
-        res.json(rows);
-    });
+    );
 });
 
-// Get one menu item.
+// =====================================================
+// 7. GET ONE MENU ITEM
+// =====================================================
+
 app.get("/api/item/:canteen/:id", (req, res) => {
-    const canteen = getCanteen(req.params.canteen);
+    const canteen = normaliseCanteen(req.params.canteen);
+    const itemId = Number(req.params.id);
 
-    if (!canteen) {
-        return res.status(404).json({
-            error: "Canteen not found"
+    if (!canteen || !Number.isInteger(itemId) || itemId <= 0) {
+        return res.status(400).json({
+            error: "Invalid canteen or item ID"
         });
     }
 
-    const sql = `
-        SELECT
-            CAST(item_id AS CHAR) AS item_id,
-            item_name,
-            category,
-            price,
-            availability,
-            description
-        FROM ${DB}.${canteen.table}
-        WHERE item_id = ?
-        LIMIT 1
-    `;
+    db.query(
+        `${menuSelect} WHERE LOWER(canteen) = ? AND id = ? LIMIT 1`,
+        [canteen, itemId],
+        (error, rows) => {
+            if (error) {
+                return sendDbError("Get menu item failed", res, error);
+            }
 
-    db.query(sql, [req.params.id], (err, rows) => {
-        if (err) {
-            return sendDbError(
-                "Item lookup failed",
-                res,
-                err
-            );
+            if (rows.length === 0) {
+                return res.status(404).json({
+                    error: "Menu item not found"
+                });
+            }
+
+            res.set("Cache-Control", "no-store");
+            res.json(rows[0]);
         }
-
-        if (!rows.length) {
-            return res.status(404).json({
-                error: "Item not found"
-            });
-        }
-
-        res.json(rows[0]);
-    });
+    );
 });
 
-// Save a favourite.
+// =====================================================
+// 8. SAVE FAVOURITE
+//
+// Keeps the existing food_favourites table.
+// =====================================================
+
 app.post("/api/favourites", (req, res) => {
     const visitorId = String(
-        req.body.visitorId ||
-        req.body.visitor_id ||
-        ""
+        req.body.visitorId || req.body.visitor_id || ""
     ).trim();
 
-    const canteenId = String(
-        req.body.canteen || ""
-    ).toLowerCase();
-
-    const itemId = String(
-        req.body.item_id ?? ""
-    ).trim();
-
-    const canteen = getCanteen(canteenId);
+    const canteen = normaliseCanteen(req.body.canteen);
+    const itemId = Number(req.body.item_id);
 
     if (
         !visitorId ||
         visitorId.length > 100 ||
         !canteen ||
-        !itemId ||
-        itemId.length > 100
+        !Number.isInteger(itemId) ||
+        itemId <= 0
     ) {
         return res.status(400).json({
             error: "visitorId, canteen and item_id are required"
         });
     }
 
-    const checkSql = `
-        SELECT item_id
-        FROM ${DB}.${canteen.table}
-        WHERE item_id = ?
-        LIMIT 1
-    `;
+    db.query(
+        `SELECT id FROM menu_items
+         WHERE LOWER(canteen) = ? AND id = ?
+         LIMIT 1`,
+        [canteen, itemId],
+        (checkError, rows) => {
+            if (checkError) {
+                return sendDbError(
+                    "Validate favourite failed",
+                    res,
+                    checkError
+                );
+            }
 
-    db.query(checkSql, [itemId], (checkError, items) => {
-        if (checkError) {
-            return sendDbError(
-                "Verify favourite item failed",
-                res,
-                checkError
-            );
-        }
-
-        if (!items.length) {
-            return res.status(404).json({
-                error: "Menu item not found"
-            });
-        }
-
-        const insertSql = `
-            INSERT IGNORE INTO ${DB}.food_favourites
-                (visitor_id, canteen, item_id)
-            VALUES (?, ?, ?)
-        `;
-
-        db.query(
-            insertSql,
-            [visitorId, canteenId, itemId],
-            (err, result) => {
-                if (err) {
-                    return sendDbError(
-                        "Save favourite failed",
-                        res,
-                        err
-                    );
-                }
-
-                res.json({
-                    success: true,
-                    favourited: true,
-                    alreadyFavourited:
-                        result.affectedRows === 0
+            if (rows.length === 0) {
+                return res.status(404).json({
+                    error: "Menu item not found"
                 });
             }
-        );
-    });
+
+            db.query(
+                `INSERT IGNORE INTO food_favourites
+                    (visitor_id, canteen, item_id)
+                 VALUES (?, ?, ?)`,
+                [visitorId, canteen, itemId],
+                (insertError, result) => {
+                    if (insertError) {
+                        return sendDbError(
+                            "Save favourite failed",
+                            res,
+                            insertError
+                        );
+                    }
+
+                    res.json({
+                        success: true,
+                        favourited: true,
+                        alreadyFavourited: result.affectedRows === 0
+                    });
+                }
+            );
+        }
+    );
 });
 
-// Load favourites for a visitor.
+// =====================================================
+// 9. GET FAVOURITES FOR A VISITOR
+// =====================================================
+
 app.get("/api/favourites/:visitorId", (req, res) => {
-    const visitorId = String(
-        req.params.visitorId || ""
-    ).trim();
+    const visitorId = String(req.params.visitorId || "").trim();
 
     if (!visitorId || visitorId.length > 100) {
         return res.status(400).json({
@@ -363,70 +304,52 @@ app.get("/api/favourites/:visitorId", (req, res) => {
         });
     }
 
-    const sql = `
-        SELECT canteen, item_id
-        FROM ${DB}.food_favourites
-        WHERE visitor_id = ?
-    `;
+    db.query(
+        `SELECT canteen, item_id
+         FROM food_favourites
+         WHERE visitor_id = ?`,
+        [visitorId],
+        (error, rows) => {
+            if (error) {
+                return sendDbError("Get favourites failed", res, error);
+            }
 
-    db.query(sql, [visitorId], (err, rows) => {
-        if (err) {
-            return sendDbError(
-                "Load favourites failed",
-                res,
-                err
-            );
+            res.json(rows);
         }
-
-        res.json(rows);
-    });
+    );
 });
 
-// Remove a favourite.
+// =====================================================
+// 10. REMOVE FAVOURITE
+// =====================================================
+
 app.delete("/api/favourites", (req, res) => {
     const visitorId = String(
-        req.body.visitorId ||
-        req.body.visitor_id ||
-        ""
+        req.body.visitorId || req.body.visitor_id || ""
     ).trim();
 
-    const canteenId = String(
-        req.body.canteen || ""
-    ).toLowerCase();
-
-    const itemId = String(
-        req.body.item_id ?? ""
-    ).trim();
+    const canteen = normaliseCanteen(req.body.canteen);
+    const itemId = Number(req.body.item_id);
 
     if (
         !visitorId ||
         visitorId.length > 100 ||
-        !getCanteen(canteenId) ||
-        !itemId ||
-        itemId.length > 100
+        !canteen ||
+        !Number.isInteger(itemId) ||
+        itemId <= 0
     ) {
         return res.status(400).json({
             error: "visitorId, canteen and item_id are required"
         });
     }
 
-    const sql = `
-        DELETE FROM ${DB}.food_favourites
-        WHERE visitor_id = ?
-          AND canteen = ?
-          AND item_id = ?
-    `;
-
     db.query(
-        sql,
-        [visitorId, canteenId, itemId],
-        (err) => {
-            if (err) {
-                return sendDbError(
-                    "Remove favourite failed",
-                    res,
-                    err
-                );
+        `DELETE FROM food_favourites
+         WHERE visitor_id = ? AND canteen = ? AND item_id = ?`,
+        [visitorId, canteen, itemId],
+        (error) => {
+            if (error) {
+                return sendDbError("Remove favourite failed", res, error);
             }
 
             res.json({
@@ -437,111 +360,115 @@ app.delete("/api/favourites", (req, res) => {
     );
 });
 
-// Get favourite counts for all dishes.
+// =====================================================
+// 11. FAVOURITE COUNTS
+// =====================================================
+
 app.get("/api/favourites/counts", (req, res) => {
-    const sql = `
-        SELECT
-            canteen,
-            item_id,
-            COUNT(*) AS favourite_count
-        FROM ${DB}.food_favourites
-        GROUP BY canteen, item_id
-    `;
+    db.query(
+        `SELECT canteen, item_id, COUNT(*) AS favourite_count
+         FROM food_favourites
+         GROUP BY canteen, item_id`,
+        (error, rows) => {
+            if (error) {
+                return sendDbError(
+                    "Get favourite counts failed",
+                    res,
+                    error
+                );
+            }
 
-    db.query(sql, (err, rows) => {
-        if (err) {
-            return sendDbError(
-                "Favourite counts failed",
-                res,
-                err
-            );
+            res.json(rows);
         }
-
-        res.json(rows);
-    });
+    );
 });
 
-// Get the most-favourited dish.
+// =====================================================
+// 12. TOP FAVOURITE DISH
+// =====================================================
+
 app.get("/api/favourites/top", (req, res) => {
-    const sql = `
-        SELECT
-            menu.*,
-            COALESCE(f.favourite_count, 0) AS favourite_count
-        FROM (${menuUnion()}) AS menu
-        LEFT JOIN (
-            SELECT
-                canteen,
-                item_id,
-                COUNT(*) AS favourite_count
-            FROM ${DB}.food_favourites
-            GROUP BY canteen, item_id
-        ) AS f
-          ON f.canteen = menu.canteen
-         AND f.item_id = menu.item_id
-        ORDER BY favourite_count DESC, menu.item_name ASC
-        LIMIT 1
-    `;
-
-    db.query(sql, (err, rows) => {
-        if (err) {
-            return sendDbError(
-                "Top favourite query failed",
-                res,
-                err
-            );
-        }
-
-        if (!rows.length) {
-            return res.status(404).json({
-                error: "No menu items found"
-            });
-        }
-
-        res.json(rows[0]);
-    });
-});
-
-// Get the top two Campus Picks.
-app.get("/api/campus-picks", (req, res) => {
-    const sql = `
-        SELECT
-            menu.*,
+    db.query(
+        `SELECT
+            m.id AS item_id,
+            m.canteen,
+            m.item_name,
+            m.category,
+            m.price,
+            m.availability,
+            m.description,
+            m.is_available,
             COUNT(f.item_id) AS favourite_count
-        FROM (${menuUnion()}) AS menu
-        INNER JOIN ${DB}.food_favourites AS f
-          ON f.canteen = menu.canteen
-         AND f.item_id = menu.item_id
-        GROUP BY
-            menu.item_id,
-            menu.item_name,
-            menu.category,
-            menu.price,
-            menu.availability,
-            menu.description,
-            menu.canteen
-        ORDER BY favourite_count DESC, menu.item_name ASC
-        LIMIT 2
-    `;
+         FROM menu_items m
+         LEFT JOIN food_favourites f
+           ON f.canteen = m.canteen
+          AND f.item_id = m.id
+         GROUP BY
+            m.id, m.canteen, m.item_name, m.category,
+            m.price, m.availability, m.description, m.is_available
+         ORDER BY favourite_count DESC, m.item_name ASC
+         LIMIT 1`,
+        (error, rows) => {
+            if (error) {
+                return sendDbError("Get top favourite failed", res, error);
+            }
 
-    db.query(sql, (err, rows) => {
-        if (err) {
-            return sendDbError(
-                "Campus Picks query failed",
-                res,
-                err
-            );
+            if (rows.length === 0) {
+                return res.status(404).json({
+                    error: "No menu items found"
+                });
+            }
+
+            res.json(rows[0]);
         }
-
-        res.json(rows);
-    });
+    );
 });
 
-// Handle Express errors.
-app.use((err, req, res, next) => {
-    console.error("Unhandled request error:", err.message);
+// =====================================================
+// 13. TODAY'S CAMPUS PICKS
+// =====================================================
+
+app.get("/api/campus-picks", (req, res) => {
+    db.query(
+        `SELECT
+            m.id AS item_id,
+            m.canteen,
+            m.item_name,
+            m.category,
+            m.price,
+            m.availability,
+            m.description,
+            m.is_available,
+            COUNT(f.item_id) AS favourite_count
+         FROM menu_items m
+         INNER JOIN food_favourites f
+           ON f.canteen = m.canteen
+          AND f.item_id = m.id
+         GROUP BY
+            m.id, m.canteen, m.item_name, m.category,
+            m.price, m.availability, m.description, m.is_available
+         ORDER BY favourite_count DESC, m.item_name ASC
+         LIMIT 2`,
+        (error, rows) => {
+            if (error) {
+                return sendDbError("Get Campus Picks failed", res, error);
+            }
+
+            res.set("Cache-Control", "no-store");
+            res.json(rows);
+        }
+    );
+});
+
+// =====================================================
+// 14. GLOBAL ERROR HANDLER
+// =====================================================
+
+app.use((error, req, res, next) => {
+    console.error("Unhandled request error:", error.message);
 
     if (res.headersSent) {
-        return next(err);
+        return next(error);
     }
 
     res.status(500).json({
@@ -549,9 +476,10 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Start the server.
+// =====================================================
+// 15. START SERVER
+// =====================================================
+
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(
-        `Campus Connect Canteens Backend running on port ${PORT}`
-    );
+    console.log(`Campus Bites backend running on port ${PORT}`);
 });
