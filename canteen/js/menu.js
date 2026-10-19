@@ -106,28 +106,27 @@ function getItemId(item) {
 
 // Convert common database values into a consistent status.
 function isItemUnavailable(item) {
-    const availability = item.availability;
-    const isAvailable = item.is_available;
-
+    // is_available is the authoritative database flag when supplied.
     if (
-        isAvailable === 0 ||
-        isAvailable === "0" ||
-        isAvailable === false ||
-        String(isAvailable).toLowerCase() === "false"
+        item.is_available === 0 ||
+        item.is_available === "0" ||
+        item.is_available === false ||
+        String(item.is_available).toLowerCase() === "false"
     ) {
         return true;
     }
 
     if (
-        isAvailable === 1 ||
-        isAvailable === "1" ||
-        isAvailable === true ||
-        String(isAvailable).toLowerCase() === "true"
+        item.is_available === 1 ||
+        item.is_available === "1" ||
+        item.is_available === true ||
+        String(item.is_available).toLowerCase() === "true"
     ) {
         return false;
     }
 
-    const status = String(availability ?? "Available")
+    // Fallback for responses where is_available is genuinely missing.
+    const status = String(item.availability ?? "Available")
         .trim()
         .toLowerCase();
 
@@ -409,7 +408,10 @@ function updateCardAvailability(item) {
     const addButton = card.querySelector(".add-cart");
 
     if (status) {
-        status.textContent = getAvailabilityText(item);
+        status.textContent = unavailable
+            ? "Not Available"
+            : "Available";
+
         status.classList.toggle("unavailable", unavailable);
         status.style.color = unavailable ? "#d32f2f" : "#2e7d32";
     }
