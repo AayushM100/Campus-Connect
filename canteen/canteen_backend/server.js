@@ -232,35 +232,38 @@ app.get("/api/canteens", (req, res) => {
     );
 });
 
-// ======================================================
-// 8. GET ALL MENU ITEMS
-// ======================================================
 
+// Route 1: Get ALL menu items (used by Browse Cuisine / menu.html)
 app.get("/api/menu", async (req, res) => {
     try {
-        const rows = await query(menuUnionSql());
+        const rows = await query(`
+            SELECT
+                id,
+                canteen,
+                item_name AS name,
+                category,
+                price,
+                availability,
+                description,
+                is_available
+            FROM \`${process.env.DB_NAME}\`.menu_items
+            ORDER BY id
+        `);
         res.json(rows);
     } catch (err) {
-        handleRouteError("All menu query failed:", res, err);
+        handleRouteError("Main menu query failed:", res, err);
     }
 });
 
-// ======================================================
-// 9. GET MENU BY CANTEEN
-// ======================================================
-
+// Route 2: Get menu items for a specific canteen
 app.get("/api/menu/:canteen", async (req, res) => {
-    // Keep your existing validation to ensure the canteen name is valid
     const canteenInfo = getCanteen(req.params.canteen);
 
     if (!canteenInfo) {
-        return res.status(404).json({
-            error: "Canteen not found"
-        });
+        return res.status(404).json({ error: "Canteen not found" });
     }
 
     try {
-        // Query the new unified menu_items table and filter by the canteen column
         const rows = await query(`
             SELECT
                 id,
