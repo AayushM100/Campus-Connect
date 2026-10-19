@@ -1,3 +1,6 @@
+
+"use strict";
+
 // =====================================================
 // CAMPUS BITES - SHARED CART
 // Works on Home, Canteens and Menu pages
@@ -5,605 +8,490 @@
 
 
 // =====================================================
-// LOAD CART FROM LOCAL STORAGE
+// 1. LOAD CART FROM LOCAL STORAGE
 // =====================================================
 
-let cart = JSON.parse(
-    localStorage.getItem("campusBitesCart")
-) || [];
+function loadCart() {
+    try {
+        const savedCart = JSON.parse(
+            localStorage.getItem("campusBitesCart") || "[]"
+        );
+
+        if (!Array.isArray(savedCart)) {
+            return [];
+        }
+
+        // Normalise old cart entries so quantity calculations work.
+        return savedCart
+            .filter(item => item && item.item_id != null)
+            .map(item => ({
+                ...item,
+                item_id: String(item.item_id),
+                canteen: String(item.canteen || "cafeteria"),
+                item_name: String(item.item_name || "Food item"),
+                price: Number(item.price) || 0,
+                quantity: Math.max(
+                    1,
+                    Math.floor(Number(item.quantity) || 1)
+                )
+            }));
+    } catch (error) {
+        console.error("Could not load cart:", error);
+        return [];
+    }
+}
+
+let cart = loadCart();
 
 
 // =====================================================
-// SAVE CART
+// 2. SAVE CART
 // =====================================================
 
 function saveCart() {
-
-    localStorage.setItem(
-        "campusBitesCart",
-        JSON.stringify(cart)
-    );
-
+    try {
+        localStorage.setItem(
+            "campusBitesCart",
+            JSON.stringify(cart)
+        );
+    } catch (error) {
+        console.error("Could not save cart:", error);
+        alert("Could not save your cart. Check your browser storage.");
+    }
 }
 
 
 // =====================================================
-// GET TOTAL NUMBER OF ITEMS
+// 3. GET TOTAL NUMBER OF ITEMS
 // =====================================================
 
 function getCartCount() {
-
-    let total = 0;
-
-    cart.forEach(function (item) {
-
-        total += item.quantity;
-
-    });
-
-    return total;
-
+    return cart.reduce(function (total, item) {
+        return total + (Number(item.quantity) || 0);
+    }, 0);
 }
 
 
 // =====================================================
-// UPDATE CART COUNTER
+// 4. GET CART TOTAL
+// =====================================================
+
+function getCartTotal() {
+    return cart.reduce(function (total, item) {
+        return total +
+            (Number(item.price) || 0) *
+            (Number(item.quantity) || 0);
+    }, 0);
+}
+
+
+// =====================================================
+// 5. UPDATE CART COUNTER
 // =====================================================
 
 function updateCartCount() {
-
-    const cartCount =
-        document.querySelector("#cartCount");
+    const cartCount = document.querySelector("#cartCount");
 
     if (cartCount) {
-
-        cartCount.textContent =
-            getCartCount();
-
+        cartCount.textContent = getCartCount();
     }
-
 }
 
 
 // =====================================================
-// ADD ITEM TO CART
+// 6. FIND A CART ITEM
+// Normalise IDs to strings to avoid string/number mismatches.
+// =====================================================
+
+function findCartItem(itemId, canteen) {
+    return cart.find(function (cartItem) {
+        return (
+            String(cartItem.item_id) === String(itemId) &&
+            String(cartItem.canteen) === String(canteen)
+        );
+    });
+}
+
+
+// =====================================================
+// 7. ADD ITEM TO CART
+// Compatible with window.addToCart(item, button).
 // =====================================================
 
 function addToCart(item, button) {
+    if (!item) {
+        console.error("Cannot add an empty item to the cart.");
+        return;
+    }
 
-    const existingItem =
-        cart.find(function (cartItem) {
+    const itemId = item.item_id ?? item.id;
 
-            return (
-                cartItem.item_id === item.item_id &&
-                cartItem.canteen === item.canteen
-            );
+    if (itemId == null || itemId === "") {
+        console.error("Food item is missing its ID:", item);
+        alert("This food item could not be added. Please try again.");
+        return;
+    }
 
-        });
+    const canteen = String(item.canteen || "cafeteria");
 
+    // Prevent adding food that the menu currently marks unavailable.
+    const status = String(item.availability ?? "Available")
+        .trim()
+        .toLowerCase();
+
+    const explicitlyUnavailable =
+        item.is_available === false ||
+        item.is_available === 0 ||
+        item.is_available === "0" ||
+        status === "not available" ||
+        status === "unavailable" ||
+        status === "out of stock" ||
+        status === "closed";
+
+    if (explicitlyUnavailable) {
+        alert("Sorry, this item is currently unavailable.");
+        return;
+    }
+
+    const existingItem = findCartItem(itemId, canteen);
 
     if (existingItem) {
-
         existingItem.quantity += 1;
-
     } else {
-
         cart.push({
-
-            item_id: item.item_id,
-
-            item_name: item.item_name,
-
-            price: Number(item.price),
-
-            category: item.category,
-
-            canteen: item.canteen,
-
+            item_id: String(itemId),
+            item_name: String(item.item_name || item.name || "Food item"),
+            price: Number(item.price) || 0,
+            category: String(item.category || ""),
+            canteen: canteen,
             quantity: 1
-
         });
-
     }
-
-
-    // Save updated cart
 
     saveCart();
-
     updateCartCount();
 
-
-    // Change Add to Cart button temporarily
-
+    // Give the user feedback without changing the cart's actual data.
     if (button) {
+        const originalText = button.textContent;
 
-        button.innerHTML =
-            "✓ Added";
-
+        button.textContent = "✓ Added";
         button.classList.add("added");
 
+        button.disabled = true;
 
         setTimeout(function () {
+            if (!button.isConnected) return;
 
-            button.innerHTML =
-                "🛒 &nbsp; Add to Cart";
-
+            button.textContent = originalText;
             button.classList.remove("added");
-
-        }, 1200);
-
+            button.disabled = false;
+        }, 1000);
     }
-
 }
+
+// Allow other scripts to call addToCart reliably.
+window.addToCart = addToCart;
 
 
 // =====================================================
-// CREATE FLOATING CART BUTTON
+// 8. CREATE FLOATING CART BUTTON
 // =====================================================
 
 function createCartButton() {
-
-    // Prevent duplicate cart buttons
-
-    if (
-        document.querySelector("#cartButton")
-    ) {
-
+    if (document.querySelector("#cartButton")) {
+        updateCartCount();
         return;
-
     }
 
+    const cartButton = document.createElement("button");
 
-    const cartButton =
-        document.createElement("button");
-
-
-    cartButton.id =
-        "cartButton";
-
+    cartButton.id = "cartButton";
+    cartButton.type = "button";
+    cartButton.setAttribute("aria-label", "Open shopping cart");
 
     cartButton.innerHTML = `
-
         🛒
-
-        <span id="cartCount">
-            ${getCartCount()}
-        </span>
-
+        <span id="cartCount">${getCartCount()}</span>
     `;
 
-
-    // =================================================
-    // DETERMINE CURRENT PAGE
-    // =================================================
-
-    const currentPage =
-        window.location.pathname.toLowerCase();
-
-
-    // Home page → upper right
+    const currentPage = window.location.pathname.toLowerCase();
 
     if (
-        currentPage.includes("index.html") ||
+        currentPage.endsWith("/index.html") ||
         currentPage.endsWith("/")
     ) {
-
-        cartButton.classList.add(
-            "cart-home"
-        );
-
+        cartButton.classList.add("cart-home");
+    } else {
+        cartButton.classList.add("cart-bottom");
     }
 
-    // Canteens + Menu → bottom right
+    cartButton.addEventListener("click", showCart);
 
-    else {
-
-        cartButton.classList.add(
-            "cart-bottom"
-        );
-
-    }
-
-
-    // =================================================
-    // OPEN CART WHEN CLICKED
-    // =================================================
-
-    cartButton.addEventListener(
-        "click",
-        showCart
-    );
-
-
-    document.body.appendChild(
-        cartButton
-    );
-
+    document.body.appendChild(cartButton);
 }
 
 
 // =====================================================
-// SHOW CART
+// 9. ESCAPE TEXT BEFORE INSERTING INTO HTML
+// =====================================================
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, function (character) {
+        const replacements = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        };
+
+        return replacements[character];
+    });
+}
+
+
+// =====================================================
+// 10. CANTEEN NAME
+// =====================================================
+
+function getCanteenName(canteen) {
+    const names = {
+        cafeteria: "Cafeteria",
+        timeless: "Timeless",
+        nescafe: "Nescafe"
+    };
+
+    return names[canteen] || canteen || "Campus";
+}
+
+
+// =====================================================
+// 11. UPDATE ITEM QUANTITY
+// Shared by the + and − buttons.
+// =====================================================
+
+function changeCartQuantity(itemId, canteen, action) {
+    const item = findCartItem(itemId, canteen);
+
+    if (!item) {
+        console.warn("Cart item not found:", itemId, canteen);
+        return;
+    }
+
+    if (action === "increase") {
+        item.quantity += 1;
+    } else if (action === "decrease") {
+        item.quantity -= 1;
+    } else {
+        return;
+    }
+
+    // Remove the item when its quantity reaches zero.
+    if (item.quantity <= 0) {
+        cart = cart.filter(function (cartItem) {
+            return !(
+                String(cartItem.item_id) === String(itemId) &&
+                String(cartItem.canteen) === String(canteen)
+            );
+        });
+    }
+
+    saveCart();
+    updateCartCount();
+
+    // Re-render the open cart with the updated quantity and total.
+    showCart();
+}
+
+
+// =====================================================
+// 12. SHOW CART
 // =====================================================
 
 function showCart() {
-
-    // Remove an existing cart if already open
-
-    const oldOverlay =
-        document.querySelector(
-            "#cartOverlay"
-        );
-
+    const oldOverlay = document.querySelector("#cartOverlay");
 
     if (oldOverlay) {
-
         oldOverlay.remove();
-
     }
 
+    const overlay = document.createElement("div");
+    overlay.id = "cartOverlay";
 
-    let cartHTML = "";
+    const panel = document.createElement("div");
+    panel.className = "cart-panel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-labelledby", "cartTitle");
 
+    // Header.
+    const header = document.createElement("div");
+    header.className = "cart-header";
 
-    // =================================================
-    // EMPTY CART
-    // =================================================
+    const title = document.createElement("h2");
+    title.id = "cartTitle";
+    title.textContent = "🛒 Your Cart";
 
+    const closeButton = document.createElement("button");
+    closeButton.id = "closeCart";
+    closeButton.type = "button";
+    closeButton.textContent = "✕";
+    closeButton.setAttribute("aria-label", "Close cart");
+
+    header.append(title, closeButton);
+
+    // Content.
+    const content = document.createElement("div");
+    content.className = "cart-content";
 
     if (cart.length === 0) {
-        cartHTML = `
-        <div class="empty-cart">
+        const emptyCart = document.createElement("div");
+        emptyCart.className = "empty-cart";
+
+        emptyCart.innerHTML = `
             <div aria-hidden="true">🛒</div>
-
             <h3>Your tummy called!</h3>
-
             <p>
                 Your cart is empty for now.
                 There are tasty campus favourites waiting for you.
             </p>
-
             <p class="empty-cart-hint">
                 Add something to fill your tummy!
             </p>
-        </div>
-    `;
-    }
-
-
-
-    // =================================================
-    // CART WITH ITEMS
-    // =================================================
-
-    else {
-
-        cart.forEach(function (item) {
-
-            cartHTML += `
-
-                <div class="cart-item">
-
-                    <div class="cart-item-info">
-
-                        <strong>
-                            ${item.item_name}
-                        </strong>
-
-                        <small>
-                            ${getCanteenName(
-                item.canteen
-            )}
-                        </small>
-
-                        <span>
-                            ₹${item.price}
-                            ×
-                            ${item.quantity}
-                        </span>
-
-                    </div>
-
-
-                    <div class="cart-item-actions">
-
-                        <button
-                            class="quantity-button"
-                            data-action="decrease"
-                            data-id="${item.item_id}"
-                            data-canteen="${item.canteen}">
-
-                            −
-
-                        </button>
-
-
-                        <span>
-                            ${item.quantity}
-                        </span>
-
-
-                        <button
-                            class="quantity-button"
-                            data-action="increase"
-                            data-id="${item.item_id}"
-                            data-canteen="${item.canteen}">
-
-                            +
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            `;
-
-        });
-
-
-        // =================================================
-        // CALCULATE TOTAL
-        // =================================================
-
-        const total =
-            cart.reduce(
-                function (sum, item) {
-
-                    return (
-                        sum +
-                        item.price *
-                        item.quantity
-                    );
-
-                },
-                0
-            );
-
-
-        cartHTML += `
-
-            <div class="cart-total">
-
-                <strong>
-                    Total
-                </strong>
-
-                <strong>
-                    ₹${total}
-                </strong>
-
-            </div>
-
-
-            <button
-                class="checkout-button">
-
-                Proceed to Checkout
-
-            </button>
-
         `;
 
-    }
-
-
-    // =================================================
-    // CREATE CART OVERLAY
-    // =================================================
-
-    const overlay =
-        document.createElement("div");
-
-
-    overlay.id =
-        "cartOverlay";
-
-
-    overlay.innerHTML = `
-
-        <div class="cart-panel">
-
-            <div class="cart-header">
-
-                <h2>
-                    🛒 Your Cart
-                </h2>
-
-
-                <button
-                    id="closeCart">
-
-                    ✕
-
-                </button>
-
-            </div>
-
-
-            <div class="cart-content">
-
-                ${cartHTML}
-
-            </div>
-
-        </div>
-
-    `;
-
-
-    document.body.appendChild(
-        overlay
-    );
-
-
-    // =================================================
-    // CLOSE CART
-    // =================================================
-
-    document
-        .querySelector("#closeCart")
-        .addEventListener(
-            "click",
-            function () {
-
-                overlay.remove();
-
-            }
-        );
-
-
-    // =================================================
-    // QUANTITY BUTTONS
-    // =================================================
-
-    document
-        .querySelectorAll(
-            ".quantity-button"
-        )
-        .forEach(function (button) {
-
-            button.addEventListener(
-                "click",
-                function () {
-
-                    const id =
-                        Number(
-                            button.dataset.id
-                        );
-
-
-                    const canteen =
-                        button.dataset.canteen;
-
-
-                    const action =
-                        button.dataset.action;
-
-
-                    // Find item
-
-                    const item =
-                        cart.find(
-                            function (cartItem) {
-
-                                return (
-                                    cartItem.item_id === id &&
-                                    cartItem.canteen === canteen
-                                );
-
-                            }
-                        );
-
-
-                    if (!item) {
-
-                        return;
-
-                    }
-
-
-                    // Increase quantity
-
-                    if (
-                        action === "increase"
-                    ) {
-
-                        item.quantity += 1;
-
-                    }
-
-
-                    // Decrease quantity
-
-                    if (
-                        action === "decrease"
-                    ) {
-
-                        item.quantity -= 1;
-
-
-                        // Remove when quantity reaches zero
-
-                        if (
-                            item.quantity <= 0
-                        ) {
-
-                            cart =
-                                cart.filter(
-                                    function (cartItem) {
-
-                                        return !(
-                                            cartItem.item_id === id &&
-                                            cartItem.canteen === canteen
-                                        );
-
-                                    }
-                                );
-
-                        }
-
-                    }
-
-
-                    // Save changes
-
-                    saveCart();
-
-                    updateCartCount();
-
-
-                    // Refresh cart display
-
-                    overlay.remove();
-
-                    showCart();
-
-                }
-            );
-
+        content.appendChild(emptyCart);
+    } else {
+        cart.forEach(function (item) {
+            const cartItem = document.createElement("div");
+            cartItem.className = "cart-item";
+
+            const info = document.createElement("div");
+            info.className = "cart-item-info";
+
+            const name = document.createElement("strong");
+            name.textContent = item.item_name;
+
+            const canteen = document.createElement("small");
+            canteen.textContent = getCanteenName(item.canteen);
+
+            const price = document.createElement("span");
+            price.textContent =
+                `₹${Number(item.price).toFixed(2).replace(/\.00$/, "")} × ${item.quantity}`;
+
+            info.append(name, canteen, price);
+
+            const actions = document.createElement("div");
+            actions.className = "cart-item-actions";
+
+            const decreaseButton = document.createElement("button");
+            decreaseButton.className = "quantity-button";
+            decreaseButton.type = "button";
+            decreaseButton.dataset.action = "decrease";
+            decreaseButton.dataset.id = String(item.item_id);
+            decreaseButton.dataset.canteen = item.canteen;
+            decreaseButton.textContent = "−";
+            decreaseButton.setAttribute("aria-label", `Decrease ${item.item_name}`);
+
+            const quantity = document.createElement("span");
+            quantity.className = "cart-quantity";
+            quantity.textContent = item.quantity;
+
+            const increaseButton = document.createElement("button");
+            increaseButton.className = "quantity-button";
+            increaseButton.type = "button";
+            increaseButton.dataset.action = "increase";
+            increaseButton.dataset.id = String(item.item_id);
+            increaseButton.dataset.canteen = item.canteen;
+            increaseButton.textContent = "+";
+            increaseButton.setAttribute("aria-label", `Increase ${item.item_name}`);
+
+            actions.append(decreaseButton, quantity, increaseButton);
+            cartItem.append(info, actions);
+            content.appendChild(cartItem);
         });
 
-}
+        // Total.
+        const totalRow = document.createElement("div");
+        totalRow.className = "cart-total";
 
+        const totalLabel = document.createElement("strong");
+        totalLabel.textContent = "Total";
 
-// =====================================================
-// CANTEEN NAME
-// =====================================================
+        const totalAmount = document.createElement("strong");
+        totalAmount.textContent =
+            "₹" + getCartTotal().toFixed(2).replace(/\.00$/, "");
 
-function getCanteenName(canteen) {
+        totalRow.append(totalLabel, totalAmount);
+        content.appendChild(totalRow);
 
-    const names = {
+        // Checkout placeholder.
+        const checkoutButton = document.createElement("button");
+        checkoutButton.className = "checkout-button";
+        checkoutButton.type = "button";
+        checkoutButton.textContent = "Proceed to Checkout";
 
-        cafeteria: "Cafeteria",
+        checkoutButton.addEventListener("click", function () {
+            alert("Checkout is not connected yet.");
+        });
 
-        timeless: "Timeless",
-
-        nescafe: "Nescafe"
-
-    };
-
-
-    return (
-        names[canteen] ||
-        canteen
-    );
-
-}
-
-
-// =====================================================
-// START CART
-// =====================================================
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-        createCartButton();
-
-        updateCartCount();
-
+        content.appendChild(checkoutButton);
     }
-);
+
+    panel.append(header, content);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    // Close using the close button.
+    closeButton.addEventListener("click", function () {
+        overlay.remove();
+    });
+
+    // Close when clicking outside the panel.
+    overlay.addEventListener("click", function (event) {
+        if (event.target === overlay) {
+            overlay.remove();
+        }
+    });
+
+    // Delegate quantity-button clicks from the cart panel.
+    // This continues to work when showCart() re-renders the cart.
+    content.addEventListener("click", function (event) {
+        const button = event.target.closest(".quantity-button");
+
+        if (!button) return;
+
+        changeCartQuantity(
+            button.dataset.id,
+            button.dataset.canteen,
+            button.dataset.action
+        );
+    });
+
+    // Close cart with Escape.
+    function handleEscape(event) {
+        if (event.key === "Escape") {
+            overlay.remove();
+            document.removeEventListener("keydown", handleEscape);
+        }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+}
+
+
+// =====================================================
+// 13. INITIALISE CART
+// =====================================================
+
+function initialiseCart() {
+    createCartButton();
+    updateCartCount();
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initialiseCart);
+} else {
+    initialiseCart();
+}
