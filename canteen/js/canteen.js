@@ -1,15 +1,15 @@
-
 "use strict";
 
 const canteenCards = document.querySelectorAll(".canteen-card");
 const breakOptions = document.querySelectorAll(".break-option");
 const resultsText = document.querySelector("#resultsText");
 
+// Updated to absolute Vercel paths to prevent 404 errors
 const foodFilterUrls = {
-    all: "menu.html",
-    "full-meals": "menu.html?filter=full-meals",
-    "coffee-drinks": "menu.html?filter=coffee-drinks",
-    "quick-bites": "menu.html?filter=quick-bites"
+    all: "/canteen/menu.html",
+    "full-meals": "/canteen/menu.html?filter=full-meals",
+    "coffee-drinks": "/canteen/menu.html?filter=coffee-drinks",
+    "quick-bites": "/canteen/menu.html?filter=quick-bites"
 };
 
 // Highlight a selected category and navigate to Browse Cuisine.
@@ -40,7 +40,11 @@ function updateCanteenHours() {
     const now = new Date(
         new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
     );
+    const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
     const currentTime = now.getHours() + now.getMinutes() / 60;
+
+    const isWeekend = currentDay === 0 || currentDay === 6;
+    const isFriday = currentDay === 5;
 
     canteenCards.forEach(function (card) {
         const opening = Number(card.dataset.opening);
@@ -50,17 +54,27 @@ function updateCanteenHours() {
 
         if (!status || !openTime) return;
 
-        const isOpen = currentTime >= opening && currentTime < closing;
+        // Condition: Must NOT be a weekend AND must be within operating hours
+        const isOpen = !isWeekend && (currentTime >= opening && currentTime < closing);
 
-        status.textContent = isOpen ? "Open now" : "Closed";
+        status.textContent = isOpen ? "Open now" : "Closed now";
         status.classList.toggle("closed", !isOpen);
 
         if (isOpen) {
             openTime.textContent = "Open until " + formatTime(closing);
+        } else if (isWeekend) {
+            // Over the weekend, tell them it opens Monday
+            openTime.textContent = "Opens Monday at " + formatTime(opening);
         } else if (currentTime < opening) {
+            // Early morning before opening
             openTime.textContent = "Opens at " + formatTime(opening);
-        } else {
-            openTime.textContent = "Opens tomorrow at " + formatTime(opening);
+        } else if (currentTime >= closing) {
+            // After closing hours
+            if (isFriday) {
+                openTime.textContent = "Opens Monday at " + formatTime(opening);
+            } else {
+                openTime.textContent = "Opens tomorrow at " + formatTime(opening);
+            }
         }
     });
 }
