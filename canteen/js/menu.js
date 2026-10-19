@@ -1,3 +1,4 @@
+
 "use strict";
 
 // =====================================================
@@ -12,29 +13,25 @@ const resultSummary = document.querySelector("#resultSummary");
 const canteenTitle = document.querySelector("#canteenTitle");
 const clearFiltersButton = document.querySelector("#clearFilters");
 
-// Backend used for menu, favourites and food images.
 const BACKEND_URL =
     window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1"
+    window.location.hostname === "127.0.0.1"
         ? "http://localhost:3000"
         : "https://campus-connect-1-0q94.onrender.com";
 
-// =====================================================
-// 2. DIRECT FOOD IMAGE URL
-// =====================================================
+// Availability refresh interval: 5 seconds.
+const AVAILABILITY_REFRESH_INTERVAL = 5000;
 
-// "Veg Puff"            -> .../food-images/veg-puff.webp
-// "Veg Thali + Chapati" -> .../food-images/veg-thali-chapati.webp
-//
-// Images must exist inside the food-images folder next to the
-// server.js of your deployed backend (and be committed to Git).
+// =====================================================
+// 2. FOOD IMAGE URL
+// =====================================================
 
 function getImageUrl(itemName) {
     const slug = String(itemName || "")
         .trim()
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")   // spaces, +, /, & etc. -> "-"
-        .replace(/^-+|-+$/g, "");      // trim leading/trailing "-"
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
 
     return `${BACKEND_URL}/food-images/${slug}.webp`;
 }
@@ -83,9 +80,75 @@ let allMenuItems = [];
 let selectedCanteen = "all";
 let selectedFilter = "all";
 let selectedCategory = "all";
+let isInitialLoadComplete = false;
+let isRefreshingAvailability = false;
+
+// Lookup maps for updating existing cards without rebuilding them.
+const menuItemsByKey = new Map();
+const menuCardsByKey = new Map();
 
 // =====================================================
-// 4. FAVOURITES
+// 4. ITEM HELPERS
+// =====================================================
+
+function getFoodKey(item) {
+    return String(item.canteen || "") + "::" +
+        String(item.item_id ?? item.item_name ?? "");
+}
+
+function getItemName(item) {
+    return String(item.item_name || item.name || "Food Item");
+}
+
+function getItemId(item) {
+    return String(item.item_id ?? item.id ?? "");
+}
+
+// Convert common database values into a consistent status.
+function isItemUnavailable(item) {
+    const availability = item.availability;
+    const isAvailable = item.is_available;
+
+    if (
+        isAvailable === 0 ||
+        isAvailable === "0" ||
+        isAvailable === false ||
+        String(isAvailable).toLowerCase() === "false"
+    ) {
+        return true;
+    }
+
+    if (
+        isAvailable === 1 ||
+        isAvailable === "1" ||
+        isAvailable === true ||
+        String(isAvailable).toLowerCase() === "true"
+    ) {
+        return false;
+    }
+
+    const status = String(availability ?? "Available")
+        .trim()
+        .toLowerCase();
+
+    return [
+        "not available",
+        "unavailable",
+        "closed",
+        "out of stock",
+        "0",
+        "false"
+    ].includes(status);
+}
+
+function getAvailabilityText(item) {
+    return isItemUnavailable(item)
+        ? "Not Available"
+        : "Available";
+}
+
+// =====================================================
+// 5. FAVOURITES
 // =====================================================
 
 function getVisitorId() {
@@ -97,10 +160,10 @@ function getVisitorId() {
         if (!visitorId) {
             visitorId =
                 window.crypto &&
-                    typeof window.crypto.randomUUID === "function"
+                typeof window.crypto.randomUUID === "function"
                     ? window.crypto.randomUUID()
                     : "visitor-" + Date.now() + "-" +
-                    Math.random().toString(36).slice(2);
+                      Math.random().toString(36).slice(2);
 
             localStorage.setItem(storageKey, visitorId);
         }
@@ -108,7 +171,9 @@ function getVisitorId() {
         return visitorId;
     } catch (error) {
         console.error("Could not access visitor ID storage:", error);
-        return "temporary-" + Math.random().toString(36).slice(2);
+
+        return "temporary-" +
+            Math.random().toString(36).slice(2);
     }
 }
 
@@ -129,11 +194,6 @@ function readFavorites() {
 
 let favoriteFoods = readFavorites();
 
-function getFoodKey(item) {
-    return String(item.canteen || "") + "::" +
-        String(item.item_id ?? item.item_name ?? "");
-}
-
 function saveFavorites() {
     try {
         localStorage.setItem(
@@ -149,11 +209,40 @@ function isFavorite(item) {
     return favoriteFoods.includes(getFoodKey(item));
 }
 
+function updateFavoriteButton(item, button) {
+    const saved = isFavorite(item);
+    const name = getItemName(item);
+
+    button.textContent = saved ? "♥" : "♡";
+    button.classList.toggle("active", saved);
+    button.setAttribute("aria-pressed", String(saved));
+    button.setAttribute(
+        "aria-label",
+        saved
+            ? `Remove ${name} from favourites`
+            : `Add ${name} to favourites`
+    );
+
+    button.title = saved
+        ? "Remove from favourites"
+        : "Add to favourites";
+}
+
+function refreshFavoriteButtons() {
+    document.querySelectorAll(".food-favorite").forEach(button => {
+        const item = menuItemsByKey.get(button.dataset.foodKey);
+
+        if (item) {
+            updateFavoriteButton(item, button);
+        }
+    });
+}
+
 async function sendFavoriteToServer(item, shouldSave) {
     const payload = {
         visitorId,
         canteen: item.canteen,
-        item_id: String(item.item_id ?? item.item_name ?? "")
+        item_id: getItemId(item)
     };
 
     try {
@@ -171,7 +260,9 @@ async function sendFavoriteToServer(item, shouldSave) {
         const data = await response.json();
 
         if (!response.ok || data.success !== true) {
-            throw new Error(data.error || "HTTP " + response.status);
+            throw new Error(
+                data.error || `HTTP ${response.status}`
+            );
         }
 
         return true;
@@ -182,102 +273,13 @@ async function sendFavoriteToServer(item, shouldSave) {
     }
 }
 
-// Updates every heart button already on the page WITHOUT rebuilding
-// the cards (rebuilding would re-request every food image).
-function refreshFavoriteButtons() {
-    document.querySelectorAll(".food-favorite").forEach(function (button) {
-        const item = menuItemsByKey.get(button.dataset.foodKey);
-
-        if (item) updateFavoriteButton(item, button);
-    });
-}
-
-async function loadServerFavorites() {
-    try {
-        const response = await fetch(
-            `${BACKEND_URL}/api/favourites/${encodeURIComponent(visitorId)}`
-        );
-
-        if (!response.ok) {
-            throw new Error(
-                "Favourites API returned HTTP " + response.status
-            );
-        }
-
-        const serverFavorites = await response.json();
-
-        if (!Array.isArray(serverFavorites)) {
-            throw new Error("Invalid favourites response");
-        }
-
-        const serverKeys = serverFavorites.map(function (favorite) {
-            return String(favorite.canteen) + "::" +
-                String(favorite.item_id);
-        });
-
-        const serverKeySet = new Set(serverKeys);
-        const localKeysBeforeMerge = new Set(favoriteFoods);
-
-        favoriteFoods = Array.from(
-            new Set([...favoriteFoods, ...serverKeys])
-        );
-
-        saveFavorites();
-
-        const localItemsToSync = allMenuItems.filter(function (item) {
-            const key = getFoodKey(item);
-
-            return localKeysBeforeMerge.has(key) &&
-                !serverKeySet.has(key);
-        });
-
-        await Promise.all(
-            localItemsToSync.map(function (item) {
-                return sendFavoriteToServer(item, true);
-            })
-        );
-
-        // Only refresh the hearts. Do not call displayMenu() here.
-        refreshFavoriteButtons();
-
-        window.dispatchEvent(
-            new Event("campusBitesFavoritesUpdated")
-        );
-    } catch (error) {
-        console.warn(
-            "Could not sync favourites. Using local favourites.",
-            error
-        );
-    }
-}
-
-function updateFavoriteButton(item, button) {
-    const saved = isFavorite(item);
-
-    button.textContent = saved ? "♥" : "♡";
-    button.classList.toggle("active", saved);
-
-    button.setAttribute(
-        "aria-label",
-        saved
-            ? "Remove " + item.item_name + " from favourites"
-            : "Add " + item.item_name + " to favourites"
-    );
-
-    button.setAttribute("aria-pressed", String(saved));
-    button.title = saved
-        ? "Remove from favourites"
-        : "Add to favourites";
-}
-
 async function toggleFavorite(item, button) {
     if (button.disabled) return;
 
     button.disabled = true;
 
     const key = getFoodKey(item);
-    const wasFavorite = favoriteFoods.includes(key);
-    const shouldSave = !wasFavorite;
+    const shouldSave = !favoriteFoods.includes(key);
 
     try {
         const success = await sendFavoriteToServer(item, shouldSave);
@@ -290,7 +292,7 @@ async function toggleFavorite(item, button) {
             }
         } else {
             favoriteFoods = favoriteFoods.filter(
-                favoriteKey => favoriteKey !== key
+                savedKey => savedKey !== key
             );
         }
 
@@ -305,108 +307,227 @@ async function toggleFavorite(item, button) {
     }
 }
 
+async function loadServerFavorites() {
+    try {
+        const response = await fetch(
+            `${BACKEND_URL}/api/favourites/${encodeURIComponent(visitorId)}`
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const serverFavorites = await response.json();
+
+        if (!Array.isArray(serverFavorites)) {
+            throw new Error("Invalid favourites response");
+        }
+
+        const serverKeys = serverFavorites.map(favorite =>
+            `${favorite.canteen}::${favorite.item_id}`
+        );
+
+        const serverKeySet = new Set(serverKeys);
+        const localKeysBeforeMerge = new Set(favoriteFoods);
+
+        favoriteFoods = Array.from(
+            new Set([...favoriteFoods, ...serverKeys])
+        );
+
+        saveFavorites();
+
+        const localItemsToSync = allMenuItems.filter(item => {
+            const key = getFoodKey(item);
+
+            return localKeysBeforeMerge.has(key) &&
+                !serverKeySet.has(key);
+        });
+
+        await Promise.all(
+            localItemsToSync.map(item =>
+                sendFavoriteToServer(item, true)
+            )
+        );
+
+        refreshFavoriteButtons();
+
+        window.dispatchEvent(
+            new Event("campusBitesFavoritesUpdated")
+        );
+    } catch (error) {
+        console.warn("Could not sync favourites:", error);
+    }
+}
 
 // =====================================================
-// CANTEEN OPEN / CLOSED CHECK (India Standard Time)
+// 6. CANTEEN OPEN/CLOSED SCHEDULE
 // =====================================================
 
 function checkCanteenStatus() {
-    // Force IST regardless of the user's device settings
     const istTime = new Date(
-        new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+        new Date().toLocaleString("en-US", {
+            timeZone: "Asia/Kolkata"
+        })
     );
 
-    const dayOfWeek = istTime.getDay();     // 0 = Sunday
-    const currentHour = istTime.getHours(); // 0-23
+    const dayOfWeek = istTime.getDay();
+    const currentHour = istTime.getHours();
 
     const year = istTime.getFullYear();
     const month = String(istTime.getMonth() + 1).padStart(2, "0");
     const date = String(istTime.getDate()).padStart(2, "0");
     const todayDate = `${year}-${month}-${date}`;
 
-    // --- SCHEDULE CONFIGURATION ---
-    const openingHour = 9;   // 9:00 AM
-    const closingHour = 17;  // 5:00 PM
-    const closedDays = [0];  // 0 = Sunday (add 6 for Saturday)
-    const holidays = ["2026-10-31", "2026-11-01"]; // YYYY-MM-DD
-    // ------------------------------
+    const openingHour = 9;
+    const closingHour = 17;
+    const closedDays = [0];
+    const holidays = ["2026-10-31", "2026-11-01"];
 
     if (closedDays.includes(dayOfWeek)) return false;
-    if (currentHour < openingHour || currentHour >= closingHour) return false;
+    if (currentHour < openingHour || currentHour >= closingHour) {
+        return false;
+    }
     if (holidays.includes(todayDate)) return false;
 
     return true;
 }
 
 // =====================================================
-// 11. CREATE FOOD CARD
+// 7. UPDATE AVAILABILITY ON AN EXISTING CARD
 // =====================================================
 
+// This updates only the status and cart button.
+// It does not recreate cards or reload images.
+function updateCardAvailability(item) {
+    const key = getFoodKey(item);
+    const card = menuCardsByKey.get(key);
 
-function createFoodCard(item) {
-    // Handles 0, "0", false, or string "false" from MySQL
-    const isItemUnavailable =
-        item.is_available === 0 ||
-        item.is_available === "0" ||
-        item.is_available === false ||
-        item.availability === "Not Available";
+    if (!card || !card.isConnected) return;
 
-    // 2. Set dynamic text, colors, and button states based on availability
-    const itemStatusText = isItemUnavailable ? "Not Available" : "Available";
-    const itemStatusColor = isItemUnavailable ? "#d32f2f" : "#2e7d32";
-    const buttonState = isItemUnavailable ? "disabled" : "";
-    const buttonOpacity = isItemUnavailable ? "0.5" : "1";
-    const cursorStyle = isItemUnavailable ? "not-allowed" : "pointer";
+    const unavailable = isItemUnavailable(item);
+    const status = card.querySelector(".availability");
+    const addButton = card.querySelector(".add-cart");
 
-    // 3. Format the image URL for your Render backend
-    const formattedName = item.name.toLowerCase().replace(/\s+/g, '-');
-    const imageUrl = `https://campus-connect-1-0q94.onrender.com/food-images/${formattedName}.webp`;
+    if (status) {
+        status.textContent = getAvailabilityText(item);
+        status.classList.toggle("unavailable", unavailable);
+        status.style.color = unavailable ? "#d32f2f" : "#2e7d32";
+    }
 
-    // 4. Return the complete HTML string for the card
-    return `
-        <article class="food-card">
-            <div class="food-image-container" style="position: relative;">
-                <img src="${imageUrl}" alt="${item.name}" loading="lazy" class="food-image" onerror="this.style.display='none'">
-                <button class="favorite-btn" aria-label="Add to favorites" style="position: absolute; top: 10px; right: 10px;">♡</button>
-            </div>
-            <div class="food-content">
-                <span class="canteen-tag">${item.canteen || "Cafeteria"}</span>
-                <h3 class="food-title">${item.name}</h3>
-                <p class="food-description">${item.description || item.name.toLowerCase()}</p>
-                
-                <div class="price-and-status" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                    <span class="price" style="font-weight: bold; font-size: 1.2em;">₹${item.price}</span>
-                    <span class="availability-status" style="color: ${itemStatusColor}; font-weight: bold; font-size: 0.85em;">
-                        ${itemStatusText}
-                    </span>
-                </div>
-                
-                <button 
-                    class="add-to-cart-btn" 
-                    data-id="${item.id}" 
-                    data-name="${item.name}" 
-                    data-price="${item.price}" 
-                    data-canteen="${item.canteen || 'Cafeteria'}"
-                    ${buttonState} 
-                    style="opacity: ${buttonOpacity}; cursor: ${cursorStyle}; width: 100%; margin-top: 15px;"
-                    onclick="addToCart(this)"
-                >
-                    🛒 Add to Cart
-                </button>
-            </div>
-        </article>
-    `;
+    if (addButton) {
+        addButton.disabled = unavailable;
+        addButton.style.opacity = unavailable ? "0.5" : "1";
+        addButton.style.cursor = unavailable
+            ? "not-allowed"
+            : "pointer";
+
+        addButton.textContent = unavailable
+            ? "Currently Unavailable"
+            : "🛒 Add to Cart";
+    }
+
+    card.classList.toggle("item-unavailable", unavailable);
 }
 
+// =====================================================
+// 8. REFRESH AVAILABILITY FROM THE DATABASE
+// =====================================================
+
+async function refreshMenuAvailability() {
+    if (isRefreshingAvailability || !isInitialLoadComplete) {
+        return;
+    }
+
+    isRefreshingAvailability = true;
+
+    try {
+        const canteens = ["cafeteria", "timeless", "nescafe"];
+
+        const results = await Promise.all(
+            canteens.map(async canteen => {
+                const response = await fetch(
+                    `${BACKEND_URL}/api/menu/${canteen}`,
+                    { cache: "no-store" }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `${canteen} API returned HTTP ${response.status}`
+                    );
+                }
+
+                const data = await response.json();
+
+                if (!Array.isArray(data)) {
+                    throw new Error(
+                        `Invalid menu response for ${canteen}`
+                    );
+                }
+
+                return data.map(item => ({
+                    ...item,
+                    canteen
+                }));
+            })
+        );
+
+        const latestItems = results.flat();
+
+        // Update existing objects with the newest database values.
+        latestItems.forEach(latestItem => {
+            const key = getFoodKey(latestItem);
+            const existingItem = menuItemsByKey.get(key);
+
+            if (!existingItem) {
+                // A new item needs a full menu refresh to appear.
+                return;
+            }
+
+            Object.assign(existingItem, latestItem);
+
+            // Update the card without recreating it.
+            updateCardAvailability(existingItem);
+        });
+
+        // If the database added or removed items, refresh the full menu.
+        const latestKeys = new Set(
+            latestItems.map(item => getFoodKey(item))
+        );
+
+        const currentKeys = new Set(
+            allMenuItems.map(item => getFoodKey(item))
+        );
+
+        const menuStructureChanged =
+            latestKeys.size !== currentKeys.size ||
+            [...latestKeys].some(key => !currentKeys.has(key));
+
+        if (menuStructureChanged) {
+            allMenuItems = latestItems;
+
+            menuItemsByKey.clear();
+
+            allMenuItems.forEach(item => {
+                menuItemsByKey.set(getFoodKey(item), item);
+            });
+
+            displayMenu();
+        }
+
+        console.log("Menu availability refreshed:", new Date().toLocaleTimeString());
+    } catch (error) {
+        // Keep the current UI if a temporary network request fails.
+        console.warn("Availability refresh failed:", error.message);
+    } finally {
+        isRefreshingAvailability = false;
+    }
+}
 
 // =====================================================
-// 5. LOAD ALL THREE CANTEEN MENUS
+// 9. LOAD ALL THREE CANTEEN MENUS
 // =====================================================
 
-// Lookup so heart buttons can find their item without rebuilding cards.
-const menuItemsByKey = new Map();
-
-function loadAllMenus() {
+async function loadAllMenus() {
     if (!menuContainer) {
         console.error("Could not find #menuContainer in menu.html");
         return;
@@ -418,84 +539,83 @@ function loadAllMenus() {
 
     const canteens = ["cafeteria", "timeless", "nescafe"];
 
-    Promise.all(
-        canteens.map(function (canteen) {
-            return fetch(
-                `${BACKEND_URL}/api/menu/${encodeURIComponent(canteen)}`
-            )
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error(
-                            canteen + " returned HTTP " + response.status
-                        );
-                    }
+    try {
+        const results = await Promise.all(
+            canteens.map(async canteen => {
+                const response = await fetch(
+                    `${BACKEND_URL}/api/menu/${canteen}`,
+                    { cache: "no-store" }
+                );
 
-                    return response.json();
-                })
-                .then(function (data) {
-                    if (!Array.isArray(data)) {
-                        throw new Error(
-                            "Expected an array of menu items for " + canteen
-                        );
-                    }
-
-                    return data.map(function (item) {
-                        return {
-                            ...item,
-                            canteen
-                        };
-                    });
-                });
-        })
-    )
-        .then(function (results) {
-            allMenuItems = results.flat();
-
-            menuItemsByKey.clear();
-            allMenuItems.forEach(function (item) {
-                menuItemsByKey.set(getFoodKey(item), item);
-            });
-
-            console.log("Menu items loaded:", allMenuItems.length);
-
-            initialiseFiltersFromURL();
-            updateFilterButtons();
-            updateCategoryButtons();
-            displayMenu();
-
-            loadServerFavorites();
-        })
-        .catch(function (error) {
-            console.error("Menu loading error:", error);
-
-            menuContainer.innerHTML = "";
-
-            if (noResults) {
-                noResults.hidden = false;
-
-                const heading = noResults.querySelector("h2");
-                const paragraph = noResults.querySelector("p");
-
-                if (heading) heading.textContent = "Menu unavailable";
-
-                if (paragraph) {
-                    paragraph.textContent =
-                        "Could not load the menu. Please check the backend connection.";
+                if (!response.ok) {
+                    throw new Error(
+                        `${canteen} returned HTTP ${response.status}`
+                    );
                 }
-            }
 
-            if (resultSummary) {
-                resultSummary.textContent =
-                    "Menu could not be loaded. Check the console.";
-            }
+                const data = await response.json();
+
+                if (!Array.isArray(data)) {
+                    throw new Error(
+                        `Expected menu items array for ${canteen}`
+                    );
+                }
+
+                return data.map(item => ({
+                    ...item,
+                    canteen
+                }));
+            })
+        );
+
+        allMenuItems = results.flat();
+
+        menuItemsByKey.clear();
+
+        allMenuItems.forEach(item => {
+            menuItemsByKey.set(getFoodKey(item), item);
         });
+
+        initialiseFiltersFromURL();
+        updateFilterButtons();
+        updateCategoryButtons();
+        displayMenu();
+
+        isInitialLoadComplete = true;
+
+        await loadServerFavorites();
+
+        // Start automatic availability refresh.
+        refreshMenuAvailability();
+
+    } catch (error) {
+        console.error("Menu loading error:", error);
+
+        menuContainer.innerHTML = "";
+
+        if (noResults) {
+            noResults.hidden = false;
+
+            const heading = noResults.querySelector("h2");
+            const paragraph = noResults.querySelector("p");
+
+            if (heading) heading.textContent = "Menu unavailable";
+
+            if (paragraph) {
+                paragraph.textContent =
+                    "Could not load the menu. Please check the backend connection.";
+            }
+        }
+
+        if (resultSummary) {
+            resultSummary.textContent =
+                "Menu could not be loaded. Check the console.";
+        }
+    }
 }
 
-
-const unavailableItems = ["Samosa", "Vada Pav"];
-
 // =====================================================
-// 6. READ URL PARAMETERS
+// 10. READ URL PARAMETERS
 // =====================================================
 
 function initialiseFiltersFromURL() {
@@ -519,7 +639,7 @@ function initialiseFiltersFromURL() {
     }
 
     if (filterParam && categoryGroups[filterParam]) {
-        setTimeout(function () {
+        setTimeout(() => {
             const menuSection = document.querySelector(".menu-content");
 
             if (menuSection) {
@@ -533,18 +653,18 @@ function initialiseFiltersFromURL() {
 }
 
 // =====================================================
-// 7. UPDATE FILTER BUTTONS
+// 11. UPDATE FILTER BUTTONS
 // =====================================================
 
 function updateFilterButtons() {
-    document.querySelectorAll(".canteen-filter").forEach(function (button) {
+    document.querySelectorAll(".canteen-filter").forEach(button => {
         button.classList.toggle(
             "active",
             button.dataset.canteen === selectedCanteen
         );
     });
 
-    document.querySelectorAll(".food-filter").forEach(function (button) {
+    document.querySelectorAll(".food-filter").forEach(button => {
         button.classList.toggle(
             "active",
             button.dataset.filter === selectedFilter
@@ -553,7 +673,7 @@ function updateFilterButtons() {
 }
 
 function updateCategoryButtons() {
-    document.querySelectorAll(".category-btn").forEach(function (button) {
+    document.querySelectorAll(".category-btn").forEach(button => {
         button.classList.toggle(
             "active",
             button.dataset.category === selectedCategory
@@ -562,23 +682,23 @@ function updateCategoryButtons() {
 }
 
 // =====================================================
-// 8. CHECK FOOD-TYPE FILTERS
+// 12. FOOD-TYPE FILTERS
 // =====================================================
 
 function matchesFoodFilter(item, filter) {
     if (filter === "all") return true;
 
     const category = String(item.category || "").toLowerCase();
-    const name = String(item.item_name || "").toLowerCase();
+    const name = getItemName(item).toLowerCase();
     const keywords = categoryGroups[filter] || [];
 
-    return keywords.some(function (keyword) {
-        return category.includes(keyword) || name.includes(keyword);
-    });
+    return keywords.some(keyword =>
+        category.includes(keyword) || name.includes(keyword)
+    );
 }
 
 // =====================================================
-// 9. UPDATE MENU TITLE
+// 13. UPDATE MENU TITLE
 // =====================================================
 
 function updateTitle() {
@@ -586,7 +706,7 @@ function updateTitle() {
 
     const canteenText = selectedCanteen === "all"
         ? "All campus food"
-        : (canteenNames[selectedCanteen] || selectedCanteen) + " menu";
+        : `${canteenNames[selectedCanteen] || selectedCanteen} menu`;
 
     const filterText = {
         all: "",
@@ -599,19 +719,122 @@ function updateTitle() {
 }
 
 // =====================================================
-// 10. SEARCH AND DISPLAY MENU ITEMS
+// 14. CREATE A FOOD CARD
+// =====================================================
+
+function createFoodCard(item) {
+    const key = getFoodKey(item);
+    const card = document.createElement("article");
+
+    card.className = "menu-item";
+    card.dataset.foodKey = key;
+
+    // Food image.
+    const image = document.createElement("img");
+    image.className = "food-image";
+    image.alt = getItemName(item);
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.src = getImageUrl(getItemName(item));
+
+    image.onerror = function () {
+        image.onerror = null;
+        image.src =
+            "https://placehold.co/600x400/f3eee9/76675e?text=" +
+            encodeURIComponent(getItemName(item));
+    };
+
+    // Favourite button.
+    const favoriteButton = document.createElement("button");
+    favoriteButton.type = "button";
+    favoriteButton.className = "food-favorite";
+    favoriteButton.dataset.foodKey = key;
+
+    updateFavoriteButton(item, favoriteButton);
+
+    favoriteButton.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleFavorite(item, favoriteButton);
+    });
+
+    // Item details.
+    const details = document.createElement("div");
+    details.className = "item-details";
+
+    const badge = document.createElement("span");
+    badge.className = "canteen-badge";
+    badge.textContent =
+        canteenNames[item.canteen] || item.canteen;
+
+    const title = document.createElement("h3");
+    title.textContent = getItemName(item);
+
+    const description = document.createElement("p");
+    description.className = "item-description";
+    description.textContent =
+        item.description || "A campus favourite.";
+
+    // Price and availability.
+    const bottom = document.createElement("div");
+    bottom.className = "item-bottom";
+
+    const price = document.createElement("strong");
+    price.className = "item-price";
+    price.textContent = "₹" + Number(item.price || 0);
+
+    const availability = document.createElement("span");
+    availability.className = "availability";
+
+    // Cart button.
+    const addButton = document.createElement("button");
+    addButton.className = "add-cart";
+    addButton.type = "button";
+
+    addButton.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Recheck the latest item status before adding to cart.
+        if (isItemUnavailable(item)) {
+            updateCardAvailability(item);
+            return;
+        }
+
+        if (typeof window.addToCart === "function") {
+            window.addToCart(item, addButton);
+        } else {
+            alert("Cart script is not loaded. Check your cart script.");
+        }
+    });
+
+    bottom.append(price, availability);
+    details.append(badge, title, description, bottom, addButton);
+    card.append(image, favoriteButton, details);
+
+    menuCardsByKey.set(key, card);
+
+    // Set the initial availability display.
+    updateCardAvailability(item);
+
+    return card;
+}
+
+// =====================================================
+// 15. SEARCH AND DISPLAY MENU ITEMS
 // =====================================================
 
 function displayMenu() {
     if (!menuContainer) return;
 
     menuContainer.innerHTML = "";
+    menuCardsByKey.clear();
 
     const searchText = searchInput
         ? searchInput.value.trim().toLowerCase()
         : "";
 
-    const filteredItems = allMenuItems.filter(function (item) {
+    const filteredItems = allMenuItems.filter(item => {
         const matchesCanteen =
             selectedCanteen === "all" ||
             item.canteen === selectedCanteen;
@@ -623,7 +846,7 @@ function displayMenu() {
             selectedCategory === "all" ||
             item.category === selectedCategory;
 
-        const name = String(item.item_name || "").toLowerCase();
+        const name = getItemName(item).toLowerCase();
         const description = String(item.description || "").toLowerCase();
         const category = String(item.category || "").toLowerCase();
 
@@ -643,8 +866,9 @@ function displayMenu() {
 
     if (resultSummary) {
         resultSummary.textContent =
-            filteredItems.length + " food item" +
-            (filteredItems.length === 1 ? "" : "s") + " found";
+            `${filteredItems.length} food item` +
+            (filteredItems.length === 1 ? "" : "s") +
+            " found";
     }
 
     if (filteredItems.length === 0) {
@@ -658,8 +882,7 @@ function displayMenu() {
 
             if (paragraph) {
                 paragraph.textContent = searchText
-                    ? 'No dishes match "' + searchText +
-                    '". Try another search or clear your filters.'
+                    ? `No dishes match "${searchText}". Try another search or clear your filters.`
                     : "Try selecting another canteen or food type.";
             }
         }
@@ -671,15 +894,17 @@ function displayMenu() {
 
     const grouped = {};
 
-    filteredItems.forEach(function (item) {
+    filteredItems.forEach(item => {
         const category = item.category || "Other";
 
-        if (!grouped[category]) grouped[category] = [];
+        if (!grouped[category]) {
+            grouped[category] = [];
+        }
 
         grouped[category].push(item);
     });
 
-    Object.keys(grouped).sort().forEach(function (category) {
+    Object.keys(grouped).sort().forEach(category => {
         const section = document.createElement("section");
         section.className = "menu-box";
 
@@ -690,7 +915,7 @@ function displayMenu() {
         const grid = document.createElement("div");
         grid.className = "menu-items";
 
-        grouped[category].forEach(function (item) {
+        grouped[category].forEach(item => {
             grid.appendChild(createFoodCard(item));
         });
 
@@ -700,169 +925,11 @@ function displayMenu() {
 }
 
 // =====================================================
-// 11. CREATE FOOD CARD
+// 16. CANTEEN FILTER BUTTONS
 // =====================================================
 
-
-function createFoodCard(item) {
-    const card = document.createElement("article");
-    card.className = "menu-item";
-
-    // =====================================================
-    // 1. CHECK FOOD AVAILABILITY
-    // =====================================================
-
-    // Compare using lowercase so capitalization doesn't matter.
-    const unavailableItems = ["samosa", "vada pav"];
-
-    const itemName = String(item.item_name || "").trim();
-    const isTemporarilyUnavailable =
-        unavailableItems.includes(itemName.toLowerCase());
-
-    // Preserve any other availability information from the database.
-    const databaseAvailability = String(
-        item.availability || "Available"
-    );
-
-    const isUnavailable =
-        isTemporarilyUnavailable ||
-        databaseAvailability.toLowerCase().includes("unavailable") ||
-        databaseAvailability.toLowerCase().includes("not available");
-
-    const availabilityText = isUnavailable
-        ? "Not Available"
-        : databaseAvailability;
-
-    // =====================================================
-    // 2. FOOD IMAGE
-    // =====================================================
-
-    const image = document.createElement("img");
-    image.className = "food-image";
-    image.alt = itemName || "Food item";
-    image.loading = "lazy";
-    image.decoding = "async";
-    image.src = getImageUrl(itemName);
-
-    // Display a placeholder if the image cannot be loaded.
-    image.onerror = function () {
-        image.onerror = null;
-        image.src =
-            "https://placehold.co/600x400/f3eee9/76675e?text=" +
-            encodeURIComponent(itemName || "Campus Food");
-    };
-
-    // =====================================================
-    // 3. FAVOURITE BUTTON
-    // =====================================================
-
-    const favoriteButton = document.createElement("button");
-    favoriteButton.type = "button";
-    favoriteButton.className = "food-favorite";
-    favoriteButton.dataset.foodKey = getFoodKey(item);
-
-    updateFavoriteButton(item, favoriteButton);
-
-    favoriteButton.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        toggleFavorite(item, favoriteButton);
-    });
-
-    // =====================================================
-    // 4. FOOD DETAILS
-    // =====================================================
-
-    const details = document.createElement("div");
-    details.className = "item-details";
-
-    const badge = document.createElement("span");
-    badge.className = "canteen-badge";
-    badge.textContent =
-        canteenNames[item.canteen] || item.canteen;
-
-    const title = document.createElement("h3");
-    title.textContent = itemName || "Unnamed item";
-
-    const description = document.createElement("p");
-    description.className = "item-description";
-    description.textContent =
-        item.description || "A campus favourite.";
-
-    // =====================================================
-    // 5. PRICE AND AVAILABILITY STATUS
-    // =====================================================
-
-    const bottom = document.createElement("div");
-    bottom.className = "item-bottom";
-
-    const price = document.createElement("strong");
-    price.className = "item-price";
-    price.textContent = "₹" + Number(item.price || 0);
-
-    const availability = document.createElement("span");
-    availability.className = "availability";
-    availability.textContent = availabilityText;
-
-    // Red for unavailable items; retain existing styling otherwise.
-    if (isUnavailable) {
-        availability.classList.add("unavailable");
-        availability.style.color = "#d32f2f";
-    } else {
-        availability.style.color = "#2e7d32";
-    }
-
-    // =====================================================
-    // 6. ADD TO CART BUTTON
-    // =====================================================
-
-    const addButton = document.createElement("button");
-    addButton.className = "add-cart";
-    addButton.type = "button";
-
-    if (isUnavailable) {
-        addButton.textContent = "Currently Unavailable";
-        addButton.disabled = true;
-        addButton.style.opacity = "0.5";
-        addButton.style.cursor = "not-allowed";
-    } else {
-        addButton.textContent = "🛒 Add to Cart";
-    }
-
-    addButton.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        // Safety check: unavailable food cannot be added.
-        if (isUnavailable) return;
-
-        if (typeof window.addToCart === "function") {
-            window.addToCart(item, addButton);
-        } else {
-            alert(
-                "Cart script is not loaded. Please check js/cart.js."
-            );
-        }
-    });
-
-    // =====================================================
-    // 7. ASSEMBLE THE CARD
-    // =====================================================
-
-    bottom.append(price, availability);
-    details.append(badge, title, description, bottom, addButton);
-    card.append(image, favoriteButton, details);
-
-    return card;
-}
-
-
-// =====================================================
-// 12. CANTEEN FILTER BUTTONS
-// =====================================================
-
-document.querySelectorAll(".canteen-filter").forEach(function (button) {
-    button.addEventListener("click", function () {
+document.querySelectorAll(".canteen-filter").forEach(button => {
+    button.addEventListener("click", () => {
         selectedCanteen = button.dataset.canteen || "all";
 
         updateFilterButtons();
@@ -871,11 +938,11 @@ document.querySelectorAll(".canteen-filter").forEach(function (button) {
 });
 
 // =====================================================
-// 13. FOOD-TYPE FILTER BUTTONS
+// 17. FOOD-TYPE FILTER BUTTONS
 // =====================================================
 
-document.querySelectorAll(".food-filter").forEach(function (button) {
-    button.addEventListener("click", function () {
+document.querySelectorAll(".food-filter").forEach(button => {
+    button.addEventListener("click", () => {
         selectedFilter = button.dataset.filter || "all";
         selectedCategory = "all";
 
@@ -886,17 +953,28 @@ document.querySelectorAll(".food-filter").forEach(function (button) {
 });
 
 // =====================================================
-// 14. SEARCH BAR
+// 18. CATEGORY FILTER BUTTONS
+// =====================================================
+
+document.querySelectorAll(".category-btn").forEach(button => {
+    button.addEventListener("click", () => {
+        selectedCategory = button.dataset.category || "all";
+
+        updateCategoryButtons();
+        displayMenu();
+    });
+});
+
+// =====================================================
+// 19. SEARCH BAR
 // =====================================================
 
 if (searchInput) {
-    searchInput.addEventListener("input", function () {
-        displayMenu();
-    });
+    searchInput.addEventListener("input", displayMenu);
 }
 
 if (clearSearchButton) {
-    clearSearchButton.addEventListener("click", function () {
+    clearSearchButton.addEventListener("click", () => {
         if (searchInput) {
             searchInput.value = "";
             searchInput.focus();
@@ -907,11 +985,11 @@ if (clearSearchButton) {
 }
 
 // =====================================================
-// 15. CLEAR ALL FILTERS
+// 20. CLEAR ALL FILTERS
 // =====================================================
 
 if (clearFiltersButton) {
-    clearFiltersButton.addEventListener("click", function () {
+    clearFiltersButton.addEventListener("click", () => {
         selectedCanteen = "all";
         selectedFilter = "all";
         selectedCategory = "all";
@@ -931,7 +1009,21 @@ if (clearFiltersButton) {
 }
 
 // =====================================================
-// 16. START
+// 21. INITIALISE AND AUTOMATICALLY REFRESH
 // =====================================================
 
 loadAllMenus();
+
+// Refresh availability every five seconds.
+// This does not rebuild the cards when only availability changes.
+window.setInterval(
+    refreshMenuAvailability,
+    AVAILABILITY_REFRESH_INTERVAL
+);
+
+// Refresh when the user returns to this browser tab.
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        refreshMenuAvailability();
+    }
+});
