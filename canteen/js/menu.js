@@ -344,157 +344,55 @@ function checkCanteenStatus() {
 
 
 function createFoodCard(item) {
-    const card = document.createElement("article");
-    card.className = "menu-item";
+    // 1. Read directly from the database flag (MySQL returns 0 for FALSE)
+    const isItemUnavailable = item.is_available === 0; 
 
-    // =====================================================
-    // 1. CHECK FOOD AVAILABILITY
-    // =====================================================
+    // 2. Set dynamic text, colors, and button states based on availability
+    const itemStatusText = isItemUnavailable ? "Not Available" : "Available";
+    const itemStatusColor = isItemUnavailable ? "#d32f2f" : "#2e7d32"; 
+    const buttonState = isItemUnavailable ? "disabled" : "";
+    const buttonOpacity = isItemUnavailable ? "0.5" : "1";
+    const cursorStyle = isItemUnavailable ? "not-allowed" : "pointer";
 
-    // Compare using lowercase so capitalization doesn't matter.
-    const unavailableItems = ["samosa", "vada pav"];
+    // 3. Format the image URL for your Render backend
+    const formattedName = item.name.toLowerCase().replace(/\s+/g, '-');
+    const imageUrl = `https://campus-connect-1-0q94.onrender.com/food-images/${formattedName}.webp`;
 
-    const itemName = String(item.item_name || "").trim();
-    const isTemporarilyUnavailable =
-        unavailableItems.includes(itemName.toLowerCase());
-
-    // Preserve any other availability information from the database.
-    const databaseAvailability = String(
-        item.availability || "Available"
-    );
-
-    const isUnavailable =
-        isTemporarilyUnavailable ||
-        databaseAvailability.toLowerCase().includes("unavailable") ||
-        databaseAvailability.toLowerCase().includes("not available");
-
-    const availabilityText = isUnavailable
-        ? "Not Available"
-        : databaseAvailability;
-
-    // =====================================================
-    // 2. FOOD IMAGE
-    // =====================================================
-
-    const image = document.createElement("img");
-    image.className = "food-image";
-    image.alt = itemName || "Food item";
-    image.loading = "lazy";
-    image.decoding = "async";
-    image.src = getImageUrl(itemName);
-
-    // Display a placeholder if the image cannot be loaded.
-    image.onerror = function () {
-        image.onerror = null;
-        image.src =
-            "https://placehold.co/600x400/f3eee9/76675e?text=" +
-            encodeURIComponent(itemName || "Campus Food");
-    };
-
-    // =====================================================
-    // 3. FAVOURITE BUTTON
-    // =====================================================
-
-    const favoriteButton = document.createElement("button");
-    favoriteButton.type = "button";
-    favoriteButton.className = "food-favorite";
-    favoriteButton.dataset.foodKey = getFoodKey(item);
-
-    updateFavoriteButton(item, favoriteButton);
-
-    favoriteButton.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        toggleFavorite(item, favoriteButton);
-    });
-
-    // =====================================================
-    // 4. FOOD DETAILS
-    // =====================================================
-
-    const details = document.createElement("div");
-    details.className = "item-details";
-
-    const badge = document.createElement("span");
-    badge.className = "canteen-badge";
-    badge.textContent =
-        canteenNames[item.canteen] || item.canteen;
-
-    const title = document.createElement("h3");
-    title.textContent = itemName || "Unnamed item";
-
-    const description = document.createElement("p");
-    description.className = "item-description";
-    description.textContent =
-        item.description || "A campus favourite.";
-
-    // =====================================================
-    // 5. PRICE AND AVAILABILITY STATUS
-    // =====================================================
-
-    const bottom = document.createElement("div");
-    bottom.className = "item-bottom";
-
-    const price = document.createElement("strong");
-    price.className = "item-price";
-    price.textContent = "₹" + Number(item.price || 0);
-
-    const availability = document.createElement("span");
-    availability.className = "availability";
-    availability.textContent = availabilityText;
-
-    // Red for unavailable items; retain existing styling otherwise.
-    if (isUnavailable) {
-        availability.classList.add("unavailable");
-        availability.style.color = "#d32f2f";
-    } else {
-        availability.style.color = "#2e7d32";
-    }
-
-    // =====================================================
-    // 6. ADD TO CART BUTTON
-    // =====================================================
-
-    const addButton = document.createElement("button");
-    addButton.className = "add-cart";
-    addButton.type = "button";
-
-    if (isUnavailable) {
-        addButton.textContent = "Currently Unavailable";
-        addButton.disabled = true;
-        addButton.style.opacity = "0.5";
-        addButton.style.cursor = "not-allowed";
-    } else {
-        addButton.textContent = "🛒 Add to Cart";
-    }
-
-    addButton.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        // Safety check: unavailable food cannot be added.
-        if (isUnavailable) return;
-
-        if (typeof window.addToCart === "function") {
-            window.addToCart(item, addButton);
-        } else {
-            alert(
-                "Cart script is not loaded. Please check js/cart.js."
-            );
-        }
-    });
-
-    // =====================================================
-    // 7. ASSEMBLE THE CARD
-    // =====================================================
-
-    bottom.append(price, availability);
-    details.append(badge, title, description, bottom, addButton);
-    card.append(image, favoriteButton, details);
-
-    return card;
+    // 4. Return the complete HTML string for the card
+    return `
+        <article class="food-card">
+            <div class="food-image-container" style="position: relative;">
+                <img src="${imageUrl}" alt="${item.name}" loading="lazy" class="food-image" onerror="this.style.display='none'">
+                <button class="favorite-btn" aria-label="Add to favorites" style="position: absolute; top: 10px; right: 10px;">♡</button>
+            </div>
+            <div class="food-content">
+                <span class="canteen-tag">${item.canteen || "Cafeteria"}</span>
+                <h3 class="food-title">${item.name}</h3>
+                <p class="food-description">${item.description || item.name.toLowerCase()}</p>
+                
+                <div class="price-and-status" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <span class="price" style="font-weight: bold; font-size: 1.2em;">₹${item.price}</span>
+                    <span class="availability-status" style="color: ${itemStatusColor}; font-weight: bold; font-size: 0.85em;">
+                        ${itemStatusText}
+                    </span>
+                </div>
+                
+                <button 
+                    class="add-to-cart-btn" 
+                    data-id="${item.id}" 
+                    data-name="${item.name}" 
+                    data-price="${item.price}" 
+                    data-canteen="${item.canteen || 'Cafeteria'}"
+                    ${buttonState} 
+                    style="opacity: ${buttonOpacity}; cursor: ${cursorStyle}; width: 100%; margin-top: 15px;"
+                    onclick="addToCart(this)"
+                >
+                    🛒 Add to Cart
+                </button>
+            </div>
+        </article>
+    `;
 }
-
 
 
 // =====================================================

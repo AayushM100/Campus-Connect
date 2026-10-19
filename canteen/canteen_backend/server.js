@@ -250,26 +250,31 @@ app.get("/api/menu", async (req, res) => {
 // ======================================================
 
 app.get("/api/menu/:canteen", async (req, res) => {
-    const canteen = getCanteen(req.params.canteen);
+    // Keep your existing validation to ensure the canteen name is valid
+    const canteenInfo = getCanteen(req.params.canteen);
 
-    if (!canteen) {
+    if (!canteenInfo) {
         return res.status(404).json({
             error: "Canteen not found"
         });
     }
 
     try {
+        // Query the new unified menu_items table and filter by the canteen column
         const rows = await query(`
             SELECT
-                item_id,
-                item_name,
+                id,
+                canteen,
+                item_name AS name,
                 category,
                 price,
                 availability,
-                description
-            FROM \`${DB_NAME}\`.\`${canteen.table}\`
-            ORDER BY item_id
-        `);
+                description,
+                is_available
+            FROM \`${process.env.DB_NAME}\`.menu_items
+            WHERE canteen = ?
+            ORDER BY id
+        `, [req.params.canteen]);
 
         res.json(rows);
     } catch (err) {
@@ -282,9 +287,9 @@ app.get("/api/menu/:canteen", async (req, res) => {
 // ======================================================
 
 app.get("/api/item/:canteen/:id", async (req, res) => {
-    const canteen = getCanteen(req.params.canteen);
+    const canteenInfo = getCanteen(req.params.canteen);
 
-    if (!canteen) {
+    if (!canteenInfo) {
         return res.status(404).json({
             error: "Canteen not found"
         });
@@ -293,16 +298,18 @@ app.get("/api/item/:canteen/:id", async (req, res) => {
     try {
         const rows = await query(`
             SELECT
-                item_id,
-                item_name,
+                id,
+                canteen,
+                item_name AS name,
                 category,
                 price,
                 availability,
-                description
-            FROM \`${DB_NAME}\`.\`${canteen.table}\`
-            WHERE item_id = ?
+                description,
+                is_available
+            FROM \`${DB_NAME}\`.menu_items
+            WHERE id = ? AND canteen = ?
             LIMIT 1
-        `, [req.params.id]);
+        `, [req.params.id, req.params.canteen]);
 
         if (rows.length === 0) {
             return res.status(404).json({
@@ -315,7 +322,6 @@ app.get("/api/item/:canteen/:id", async (req, res) => {
         handleRouteError("Item query failed:", res, err);
     }
 });
-
 // ======================================================
 // 11. ADD A FOOD FAVOURITE
 // POST /api/favourites
