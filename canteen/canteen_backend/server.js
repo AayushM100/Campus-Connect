@@ -306,10 +306,8 @@ app.get("/api/item/:canteen/:id", async (req, res) => {
                 availability,
                 description,
                 is_available
-            FROM \`${DB_NAME}\`.menu_items
-            WHERE id = ? AND canteen = ?
-            LIMIT 1
-        `, [req.params.id, req.params.canteen]);
+            FROM \`${process.env.DB_NAME}\`.menu_items
+            ORDER BY id`);
 
         if (rows.length === 0) {
             return res.status(404).json({

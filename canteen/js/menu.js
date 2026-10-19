@@ -15,7 +15,7 @@ const clearFiltersButton = document.querySelector("#clearFilters");
 // Backend used for menu, favourites and food images.
 const BACKEND_URL =
     window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
+        window.location.hostname === "127.0.0.1"
         ? "http://localhost:3000"
         : "https://campus-connect-1-0q94.onrender.com";
 
@@ -97,10 +97,10 @@ function getVisitorId() {
         if (!visitorId) {
             visitorId =
                 window.crypto &&
-                typeof window.crypto.randomUUID === "function"
+                    typeof window.crypto.randomUUID === "function"
                     ? window.crypto.randomUUID()
                     : "visitor-" + Date.now() + "-" +
-                      Math.random().toString(36).slice(2);
+                    Math.random().toString(36).slice(2);
 
             localStorage.setItem(storageKey, visitorId);
         }
@@ -344,12 +344,16 @@ function checkCanteenStatus() {
 
 
 function createFoodCard(item) {
-    // 1. Read directly from the database flag (MySQL returns 0 for FALSE)
-    const isItemUnavailable = item.is_available === 0; 
+    // Handles 0, "0", false, or string "false" from MySQL
+    const isItemUnavailable =
+        item.is_available === 0 ||
+        item.is_available === "0" ||
+        item.is_available === false ||
+        item.availability === "Not Available";
 
     // 2. Set dynamic text, colors, and button states based on availability
     const itemStatusText = isItemUnavailable ? "Not Available" : "Available";
-    const itemStatusColor = isItemUnavailable ? "#d32f2f" : "#2e7d32"; 
+    const itemStatusColor = isItemUnavailable ? "#d32f2f" : "#2e7d32";
     const buttonState = isItemUnavailable ? "disabled" : "";
     const buttonOpacity = isItemUnavailable ? "0.5" : "1";
     const cursorStyle = isItemUnavailable ? "not-allowed" : "pointer";
@@ -655,7 +659,7 @@ function displayMenu() {
             if (paragraph) {
                 paragraph.textContent = searchText
                     ? 'No dishes match "' + searchText +
-                      '". Try another search or clear your filters.'
+                    '". Try another search or clear your filters.'
                     : "Try selecting another canteen or food type.";
             }
         }
