@@ -141,8 +141,12 @@
 
     <script>
 
-        const API_URL =
-            "https://campus-connect-n37d.onrender.com/api/lost-found/found";
+        const API_URL = (
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1"
+        )
+            ? "http://localhost:3000/api/lost-found/found"
+            : "https://campus-connect-4n2t.onrender.com/api/lost-found/found";
 
 
         const foundItemsGrid =
