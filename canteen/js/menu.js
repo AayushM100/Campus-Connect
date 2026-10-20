@@ -105,27 +105,17 @@ function getItemId(item) {
 }
 
 // Convert common database values into a consistent status.
+
 function isItemUnavailable(item) {
-    // is_available is the authoritative database flag when supplied.
-    if (
-        item.is_available === 0 ||
-        item.is_available === "0" ||
-        item.is_available === false ||
-        String(item.is_available).toLowerCase() === "false"
-    ) {
-        return true;
+    // The database's numeric flag is authoritative.
+    if (item.is_available !== undefined && item.is_available !== null) {
+        const value = String(item.is_available).trim().toLowerCase();
+
+        if (["0", "false"].includes(value)) return true;
+        if (["1", "true"].includes(value)) return false;
     }
 
-    if (
-        item.is_available === 1 ||
-        item.is_available === "1" ||
-        item.is_available === true ||
-        String(item.is_available).toLowerCase() === "true"
-    ) {
-        return false;
-    }
-
-    // Fallback for responses where is_available is genuinely missing.
+    // Fallback only if is_available is missing.
     const status = String(item.availability ?? "Available")
         .trim()
         .toLowerCase();
@@ -140,11 +130,6 @@ function isItemUnavailable(item) {
     ].includes(status);
 }
 
-function getAvailabilityText(item) {
-    return isItemUnavailable(item)
-        ? "Not Available"
-        : "Available";
-}
 
 // =====================================================
 // 5. FAVOURITES
