@@ -6,6 +6,8 @@ const cloudinary = require("cloudinary").v2;
 
 const router = express.Router();
 
+const LF_DB = process.env.DB_NAME || "campusconnect";
+
 
 // =====================================================
 // IMAGE UPLOAD FOLDER (LOCAL FALLBACK)
@@ -591,7 +593,7 @@ router.get(
                 person_name,
                 contact_number,
                 image
-            FROM lost_items
+            FROM \`${LF_DB}\`.\`lost_items\`
             WHERE LOWER(status) = 'lost'
             ORDER BY serial_number DESC
         `;
@@ -671,7 +673,7 @@ router.get(
                 person_name,
                 contact_number,
                 image
-            FROM found_items
+            FROM \`${LF_DB}\`.\`found_items\`
             WHERE LOWER(COALESCE(status, 'found')) = 'found'
             UNION ALL
             SELECT
@@ -684,7 +686,7 @@ router.get(
                 person_name,
                 contact_number,
                 image
-            FROM lost_items
+            FROM \`${LF_DB}\`.\`lost_items\`
             WHERE LOWER(status) = 'found'
             ORDER BY serial_number DESC
         `;
@@ -957,7 +959,7 @@ router.post(
                 : "lost_items";
 
         const query = `
-            INSERT INTO ${targetTable}
+            INSERT INTO \`${LF_DB}\`.\`${targetTable}\`
             (
                 person_name,
                 roll_number,

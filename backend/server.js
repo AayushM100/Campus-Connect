@@ -18,6 +18,11 @@
 // food_favourites
 // ======================================================
 
+const path = require("path");
+const fs = require("fs");
+
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 require("dotenv").config();
 
 const express = require("express");
@@ -27,39 +32,68 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB = "campus_canteen";
+const LF_DB = process.env.DB_NAME || "campusconnect";
 
 // ======================================================
-// 1. MIDDLEWARE
+// 1. MIDDLEWARE AND STATIC FILES
 // ======================================================
+
+const rootPath = path.join(__dirname, "..");
+const frontendPath = path.join(rootPath, "lost_and_found");
+const canteenPath = path.join(rootPath, "canteen");
+const foodImagesFolder = path.join(__dirname, "food-images");
+const uploadsFolder = path.join(frontendPath, "uploads");
+const backendUploadsFolder = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(foodImagesFolder)) {
+    fs.mkdirSync(foodImagesFolder, { recursive: true });
+}
+if (!fs.existsSync(backendUploadsFolder)) {
+    fs.mkdirSync(backendUploadsFolder, { recursive: true });
+}
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use("/food-images", express.static(
-    require("path").join(__dirname, "food-images")
-));
+app.use("/food-images", express.static(foodImagesFolder));
+app.use("/uploads", express.static(uploadsFolder));
+app.use("/uploads", express.static(backendUploadsFolder));
+app.use("/lost_and_found/uploads", express.static(uploadsFolder));
+app.use("/lost_and_found", express.static(frontendPath));
+app.use("/canteen", express.static(canteenPath));
 
 // ======================================================
-// 2. MYSQL CONNECTION
+// 2. MYSQL CONNECTION POOL
 // ======================================================
 
-const db = mysql.createConnection({
+const poolConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     port: Number(process.env.DB_PORT || 3306),
-    ssl: process.env.DB_SSL === "true"
+    database: LF_DB,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    connectTimeout: 30000,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
+    ssl: (process.env.DB_SSL === "true" || process.env.DB_SSL === "1")
         ? { rejectUnauthorized: false }
         : undefined
-});
+};
 
-db.connect((err) => {
+const db = mysql.createPool(poolConfig);
+
+db.getConnection((err, connection) => {
     if (err) {
         console.error("MySQL connection failed:", err.message);
         return;
     }
 
     console.log("MySQL connected successfully.");
+    connection.release();
 
     // Verify the actual canteen tables, rather than
     // checking a potentially nonexistent menu_items table.
@@ -84,7 +118,38 @@ db.connect((err) => {
             }
         );
     });
+
+    db.query(`SELECT serial_number FROM \`${LF_DB}\`.\`lost_items\` LIMIT 1`, (error) => {
+        if (error) {
+            console.error("Table check failed (lost_items):", error.message);
+        } else {
+            console.log("lost_items is accessible.");
+        }
+    });
+
+    db.query(`SELECT serial_number FROM \`${LF_DB}\`.\`found_items\` LIMIT 1`, (error) => {
+        if (error) {
+            console.error("Table check failed (found_items):", error.message);
+        } else {
+            console.log("found_items is accessible.");
+        }
+    });
 });
+
+// ======================================================
+// 3. LOST & FOUND ROUTER MOUNT
+// ======================================================
+
+const lostFoundRoutes = require("./routes/lostfound");
+
+app.use(
+    "/api/lost-found",
+    (req, res, next) => {
+        req.db = db;
+        next();
+    },
+    lostFoundRoutes
+);
 
 // ======================================================
 // 3. CANTEEN CONFIGURATION
