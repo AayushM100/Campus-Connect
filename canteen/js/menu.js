@@ -106,28 +106,40 @@ function getItemId(item) {
 
 // Convert common database values into a consistent status.
 
-function isItemUnavailable(item) {
-    // The database's numeric flag is authoritative.
-    if (item.is_available !== undefined && item.is_available !== null) {
-        const value = String(item.is_available).trim().toLowerCase();
 
-        if (["0", "false"].includes(value)) return true;
-        if (["1", "true"].includes(value)) return false;
+function isItemUnavailable(item) {
+    // Handle missing or invalid menu items safely.
+    if (!item || typeof item !== "object") {
+        return true;
     }
 
-    // Fallback only if is_available is missing.
-    const status = String(item.availability ?? "Available")
-        .trim()
-        .toLowerCase();
+    if (
+        item.is_available !== undefined &&
+        item.is_available !== null &&
+        item.is_available !== ""
+    ) {
+        const isAvailable = Number(item.is_available);
 
-    return [
-        "not available",
-        "unavailable",
-        "closed",
-        "out of stock",
-        "0",
-        "false"
-    ].includes(status);
+        if (isAvailable === 1) {
+            return false; // Available
+        }
+
+        if (isAvailable === 0) {
+            return true; // Not available
+        }
+
+        return true;
+    }
+
+    const availability = String(
+        item.availability || ""
+    ).trim().toLowerCase();
+
+    if (availability === "available") {
+        return false;
+    }
+
+    return true;
 }
 
 
