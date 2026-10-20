@@ -538,9 +538,21 @@ function getCorrectImage(item) {
     // NO IMAGE FOUND
     // =================================================
 
-    return null;
+    return item.image || null;
 
 }
+
+
+// =====================================================
+// ROOT LOST & FOUND ROUTE
+// =====================================================
+
+router.get(
+    "/",
+    function(req, res) {
+        res.redirect("/api/lost-found/lost");
+    }
+);
 
 
 // =====================================================
