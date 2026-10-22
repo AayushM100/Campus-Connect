@@ -1,31 +1,15 @@
-// CampusConnect - Main JavaScript
+﻿// CampusConnect - Main JavaScript
 // This file is shared by the Home, Dashboard and Contact pages.
 
-// -------------------- DARK MODE --------------------
-const darkModeButton = document.createElement('button');
-darkModeButton.textContent = '🌙';
-darkModeButton.title = 'Toggle dark mode';
-darkModeButton.className = 'dark-mode-btn';
-
-document.body.appendChild(darkModeButton);
-
-// Remember the user's theme choice
-if (localStorage.getItem('darkMode') === 'true') {
-  document.body.classList.add('dark-mode');
-  darkModeButton.textContent = '☀️';
-}
-
-darkModeButton.addEventListener('click', function () {
-  document.body.classList.toggle('dark-mode');
-
-  if (document.body.classList.contains('dark-mode')) {
-    localStorage.setItem('darkMode', 'true');
-    darkModeButton.textContent = '☀️';
-  } else {
-    localStorage.setItem('darkMode', 'false');
-    darkModeButton.textContent = '🌙';
+// -------------------- THEME INTEGRATION --------------------
+// Theme toggling is handled by Main/theme.js across all pages.
+// We provide fallback compatibility for legacy scripts.
+if (typeof window.CampusConnectTheme === 'undefined') {
+  if (localStorage.getItem('campusConnectTheme') === 'dark' || localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+    document.documentElement.setAttribute('data-theme', 'dark');
   }
-});
+}
 
 // -------------------- MOBILE MENU & ACTIVE LINK --------------------
 const navbar = document.querySelector('.navbar, .landing-nav');

@@ -1086,3 +1086,136 @@ body {
         font-size: 13px;
     }
 }
+/* =====================================================
+   CAMPUS BITES HOME - DARK MODE STYLES
+   ===================================================== */
+body.dark-mode .home-hero {
+    background: transparent;
+}
+
+body.dark-mode .hero-badge {
+    background: rgba(234, 88, 12, 0.15);
+    border-color: rgba(234, 88, 12, 0.3);
+    color: #fb923c;
+}
+
+body.dark-mode .home-hero h1 {
+    color: #f8fafc;
+}
+
+body.dark-mode .hero-description {
+    color: #94a3b8;
+}
+
+body.dark-mode .stat strong {
+    color: #f8fafc;
+}
+
+body.dark-mode .stat span {
+    color: #94a3b8;
+}
+
+body.dark-mode .stat-divider {
+    background: #23304c;
+}
+
+body.dark-mode .campus-picks {
+    background: #131b2e;
+    border-color: #23304c;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .picks-header {
+    border-bottom-color: #23304c;
+}
+
+body.dark-mode .picks-heading {
+    color: #f8fafc;
+}
+
+body.dark-mode .pick-card {
+    background: #1a243d;
+    border-color: #23304c;
+}
+
+body.dark-mode .pick-card:hover {
+    background: #233152;
+    border-color: #ea580c;
+}
+
+body.dark-mode .pick-name {
+    color: #f8fafc;
+}
+
+body.dark-mode .pick-sub {
+    color: #94a3b8;
+}
+
+body.dark-mode .pick-price {
+    color: #fb923c;
+}
+
+body.dark-mode .picks-footer {
+    border-top-color: #23304c;
+}
+
+body.dark-mode .picks-perk {
+    color: #94a3b8;
+}
+
+body.dark-mode .canteen-card {
+    background: #131b2e;
+    border-color: #23304c;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .canteen-card:hover {
+    border-color: #ea580c;
+    transform: translateY(-4px);
+}
+
+body.dark-mode .canteen-card h3 {
+    color: #f8fafc;
+}
+
+body.dark-mode .canteen-card p {
+    color: #94a3b8;
+}
+
+body.dark-mode .canteen-details span {
+    color: #94a3b8;
+}
+
+body.dark-mode .view-menu-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+body.dark-mode .view-menu-btn:hover {
+    background: #ea580c;
+    border-color: #ea580c;
+    color: #ffffff;
+}
+
+body.dark-mode .section-tag {
+    color: #fb923c;
+}
+
+body.dark-mode .section-heading h2,
+body.dark-mode .why-heading h2 {
+    color: #f8fafc;
+}
+
+body.dark-mode .feature-card {
+    background: #131b2e;
+    border-color: #23304c;
+}
+
+body.dark-mode .feature-card h3 {
+    color: #f8fafc;
+}
+
+body.dark-mode .feature-card p {
+    color: #94a3b8;
+}

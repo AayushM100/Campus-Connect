@@ -1424,3 +1424,278 @@ footer {
     color: #14213d;
 }
 }
+/* =====================================================
+   CAMPUS LOST & FOUND - DARK MODE & MODERN ENHANCEMENTS
+   ===================================================== */
+
+.navbar .cc-theme-toggle {
+    margin-left: 12px;
+}
+
+.portal-nav-link {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--brand-orange, #ea580c);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 15px;
+}
+
+body.dark-mode {
+    background-color: #0b111e;
+    color: #f8fafc;
+}
+
+body.dark-mode .navbar {
+    background: rgba(19, 27, 46, 0.94);
+    border-bottom-color: rgba(35, 48, 76, 0.85);
+}
+
+body.dark-mode .logo {
+    color: #f8fafc;
+}
+
+body.dark-mode .navbar nav a {
+    color: #94a3b8;
+}
+
+body.dark-mode .navbar nav a:hover {
+    color: #fb923c;
+}
+
+body.dark-mode .login-btn {
+    background: #ea580c;
+    color: #ffffff;
+}
+
+body.dark-mode .login-btn:hover {
+    background: #c2410c;
+}
+
+body.dark-mode .hero {
+    background: transparent;
+}
+
+body.dark-mode .hero-text h1 {
+    color: #f8fafc;
+}
+
+body.dark-mode .hero-description {
+    color: #94a3b8;
+}
+
+body.dark-mode .primary-btn {
+    background: #ea580c;
+    color: #ffffff;
+}
+
+body.dark-mode .primary-btn:hover {
+    background: #c2410c;
+}
+
+body.dark-mode .secondary-btn {
+    background: #1a243d;
+    border-color: #23304c;
+    color: #f8fafc;
+}
+
+body.dark-mode .secondary-btn:hover {
+    border-color: #ea580c;
+    color: #fb923c;
+}
+
+body.dark-mode .search-box {
+    background: #131b2e;
+    border-color: #23304c;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .search-box h3 {
+    color: #f8fafc;
+}
+
+body.dark-mode .search-box p {
+    color: #94a3b8;
+}
+
+body.dark-mode .search-bar input {
+    background: #0f1626;
+    border-color: #23304c;
+    color: #f8fafc;
+}
+
+body.dark-mode .search-bar button {
+    background: #ea580c;
+    color: #ffffff;
+}
+
+body.dark-mode .quick-card {
+    background: #131b2e;
+    border-color: #23304c;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .quick-card:hover {
+    border-color: #ea580c;
+    transform: translateY(-4px);
+}
+
+body.dark-mode .quick-card h3 {
+    color: #f8fafc;
+}
+
+body.dark-mode .quick-card p {
+    color: #94a3b8;
+}
+
+body.dark-mode .section-title h2,
+body.dark-mode .section-heading-row h2 {
+    color: #f8fafc;
+}
+
+body.dark-mode .small-heading {
+    color: #fb923c;
+}
+
+body.dark-mode .recent-category-title {
+    color: #f8fafc;
+}
+
+body.dark-mode .item-card {
+    background: #131b2e;
+    border-color: #23304c;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+body.dark-mode .item-card:hover {
+    border-color: #ea580c;
+    transform: translateY(-4px);
+}
+
+body.dark-mode .item-content h3 {
+    color: #f8fafc;
+}
+
+body.dark-mode .item-content p {
+    color: #94a3b8;
+}
+
+body.dark-mode .item-location {
+    color: #94a3b8;
+}
+
+body.dark-mode .how-section {
+    background: #0f1626;
+}
+
+body.dark-mode .step {
+    background: #131b2e;
+    border-color: #23304c;
+}
+
+body.dark-mode .step h3 {
+    color: #f8fafc;
+}
+
+body.dark-mode .step p {
+    color: #94a3b8;
+}
+
+body.dark-mode .stats-section {
+    background: #131b2e;
+    border-color: #23304c;
+}
+
+body.dark-mode .stat h2 {
+    color: #f8fafc;
+}
+
+body.dark-mode .stat p {
+    color: #94a3b8;
+}
+
+body.dark-mode .report-section {
+    background: #0b111e;
+}
+
+body.dark-mode .report-content h2 {
+    color: #f8fafc;
+}
+
+body.dark-mode .report-content p {
+    color: #94a3b8;
+}
+
+body.dark-mode .report-form {
+    background: #131b2e;
+    border-color: #23304c;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .report-form input,
+body.dark-mode .report-form select,
+body.dark-mode .report-form textarea {
+    background: #0f1626;
+    border-color: #23304c;
+    color: #f8fafc;
+}
+
+body.dark-mode .report-form input::placeholder,
+body.dark-mode .report-form textarea::placeholder {
+    color: #64748b;
+}
+
+body.dark-mode footer#contact,
+body.dark-mode .footer-main {
+    background: #080d17;
+    color: #cbd5e1;
+}
+
+body.dark-mode .footer-about h3,
+body.dark-mode .footer-links h4 {
+    color: #f8fafc;
+}
+
+body.dark-mode .footer-about p,
+body.dark-mode .footer-links p,
+body.dark-mode .footer-links a {
+    color: #94a3b8;
+}
+
+body.dark-mode .footer-bottom {
+    border-top-color: rgba(255, 255, 255, 0.08);
+    color: #64748b;
+}
+
+body.dark-mode .items-page {
+    background: #0b111e;
+}
+
+body.dark-mode .items-heading h1 {
+    color: #f8fafc;
+}
+
+body.dark-mode .items-heading p {
+    color: #94a3b8;
+}
+
+body.dark-mode .browse-controls input,
+body.dark-mode .browse-controls select {
+    background: #0f1626;
+    border-color: #23304c;
+    color: #f8fafc;
+}
+
+body.dark-mode .browse-controls button {
+    background: #ea580c;
+    color: #ffffff;
+}
+
+body.dark-mode .no-items h3 {
+    color: #f8fafc;
+}
+
+body.dark-mode .no-items p {
+    color: #94a3b8;
+}

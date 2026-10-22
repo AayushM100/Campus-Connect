@@ -44,6 +44,17 @@ if (!$found_result) {
 
     <title>Campus Lost & Found</title>
 
+        <link rel="stylesheet" href="../Main/tokens.css">
+    <script>
+      (function() {
+        var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+        if (t === 'dark') {
+          if (document.body) document.body.classList.add('dark-mode');
+          else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('dark-mode'); });
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="lost.css">
 
 
@@ -124,6 +135,8 @@ if (!$found_result) {
                 Browse Items
             </a>
 
+                    <a href="../index.html" class="portal-nav-link">← CampusConnect</a>
+            <button type="button" class="cc-theme-toggle" aria-label="Toggle theme"></button>
         </nav>
 
 
@@ -1027,6 +1040,10 @@ if (!$found_result) {
 
 
 
+        <script src="../Main/theme.js"></script>
+    <script src="../Main/vendor/gsap.min.js"></script>
+    <script src="../Main/vendor/ScrollTrigger.min.js"></script>
+    <script src="../Main/gsap-motion.js"></script>
     <script src="lost.js"></script>
 
 

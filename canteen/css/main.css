@@ -501,3 +501,69 @@ h4 {
         grid-template-columns: 1fr;
     }
 }
+/* =====================================================
+   CAMPUS BITES - DARK MODE STYLES
+   ===================================================== */
+body.dark-mode {
+    background-color: #0b111e;
+    color: #f8fafc;
+}
+
+body.dark-mode .navbar {
+    background: rgba(19, 27, 46, 0.94);
+    border-bottom-color: rgba(35, 48, 76, 0.85);
+}
+
+body.dark-mode .logo {
+    color: #f8fafc;
+}
+
+body.dark-mode .navbar nav a {
+    color: #94a3b8;
+}
+
+body.dark-mode .navbar nav a:hover {
+    color: #fb923c;
+    background: #1e293b;
+}
+
+body.dark-mode .navbar nav a.active {
+    color: #fb923c;
+    background: #1e293b;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .site-footer {
+    background: #080d17;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .footer-bottom {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Floating cart button refined */
+#cartButton {
+    width: 68px;
+    height: 68px;
+    font-size: 26px;
+    background: #ea580c;
+    box-shadow: 0 8px 24px rgba(234, 88, 12, 0.35);
+}
+
+#cartButton:hover {
+    transform: scale(1.06);
+    background: #c2410c;
+}
+
+#cartCount {
+    min-width: 24px;
+    height: 24px;
+    font-size: 13px;
+    background: #0f172a;
+    border: 2px solid #ffffff;
+}
+
+body.dark-mode #cartCount {
+    border-color: #1e293b;
+}
