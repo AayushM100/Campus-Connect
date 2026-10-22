@@ -106,7 +106,7 @@ const poolConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     port: Number(process.env.DB_PORT || 3306),
-    database: LF_DB,
+    database: DB,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
