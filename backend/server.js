@@ -28,6 +28,76 @@ app.use("/food-images", express.static(
     require("path").join(__dirname, "food-images")
 ));
 
+//RAZORPAY INTEGRATION
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
+
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// 1. Create a Razorpay Order
+app.post("/api/create-order", async (req, res) => {
+    try {
+        const { amount, canteen, customer_name, customer_phone } = req.body;
+
+        // Razorpay expects amount in paise (1 INR = 100 paise)
+        const options = {
+            amount: Math.round(amount * 100),
+            currency: "INR",
+            receipt: `receipt_${Date.now()}`,
+        };
+
+        const razorpayOrder = await razorpay.orders.create(options);
+
+        // Save pending order to database
+        await query(`
+            INSERT INTO orders (razorpay_order_id, canteen, customer_name, customer_phone, total_amount, status)
+            VALUES (?, ?, ?, ?, ?, 'PENDING')
+        `, [razorpayOrder.id, canteen, customer_name, customer_phone, amount]);
+
+        res.json({
+            order_id: razorpayOrder.id,
+            currency: razorpayOrder.currency,
+            amount: razorpayOrder.amount,
+            key: process.env.RAZORPAY_KEY_ID
+        });
+    } catch (err) {
+        handleRouteError("Razorpay order creation failed:", res, err);
+    }
+});
+
+// 2. Verify Razorpay Payment Signature
+app.post("/api/verify-payment", async (req, res) => {
+    try {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+        // Verify HMAC-SHA256 signature
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSignature = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(body.toString())
+            .digest("hex");
+
+        if (expectedSignature === razorpay_signature) {
+            // Update order status in DB to PAID
+            await query(`
+                UPDATE orders 
+                SET razorpay_payment_id = ?, status = 'PAID' 
+                WHERE razorpay_order_id = ?
+            `, [razorpay_payment_id, razorpay_order_id]);
+
+            res.json({ success: true, message: "Payment verified successfully" });
+        } else {
+            res.status(400).json({ success: false, error: "Invalid payment signature" });
+        }
+    } catch (err) {
+        handleRouteError("Payment verification failed:", res, err);
+    }
+});
+
+
 // ======================================================
 // 2. MYSQL CONNECTION
 // ======================================================
