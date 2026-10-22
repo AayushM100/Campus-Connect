@@ -415,3 +415,124 @@ footer .logo span,
 .footer .logo span {
     color: #d9774f !important;
 }
+
+/* =====================================================
+   MENU PAGE - DARK MODE STYLES
+   ===================================================== */
+body.dark-mode .menu-page {
+    color: #f8fafc;
+}
+
+body.dark-mode .menu-hero {
+    background: #131b2e;
+    border-color: #23304c;
+}
+
+body.dark-mode .menu-hero h1 {
+    color: #f8fafc;
+}
+
+body.dark-mode .menu-hero > p:last-child {
+    color: #94a3b8;
+}
+
+body.dark-mode .menu-filters {
+    background: #131b2e;
+    border-color: #23304c;
+}
+
+body.dark-mode .menu-filters h2 {
+    color: #f8fafc;
+}
+
+body.dark-mode .canteen-filter,
+body.dark-mode .food-filter,
+body.dark-mode .clear-filters {
+    background: #1a243d;
+    border-color: #23304c;
+    color: #cbd5e1;
+}
+
+body.dark-mode .canteen-filter:hover,
+body.dark-mode .food-filter:hover {
+    background: #233152;
+    color: #ffffff;
+}
+
+body.dark-mode .canteen-filter.active,
+body.dark-mode .food-filter.active {
+    background: #ea580c;
+    border-color: #ea580c;
+    color: #ffffff;
+}
+
+body.dark-mode .menu-search input {
+    background: #0f1626;
+    border-color: #23304c;
+    color: #f8fafc;
+}
+
+body.dark-mode .menu-search input::placeholder {
+    color: #64748b;
+}
+
+body.dark-mode .menu-box h2 {
+    color: #f8fafc;
+}
+
+body.dark-mode .food-card {
+    background: #131b2e;
+    border-color: #23304c;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+body.dark-mode .food-card:hover {
+    border-color: #ea580c;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .card-name {
+    color: #f8fafc;
+}
+
+body.dark-mode .card-desc {
+    color: #94a3b8;
+}
+
+body.dark-mode .card-canteen {
+    color: #94a3b8;
+}
+
+body.dark-mode .price {
+    color: #fb923c;
+}
+
+body.dark-mode .add-cart-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+body.dark-mode .add-cart-btn:hover {
+    background: #ea580c;
+    border-color: #ea580c;
+    color: #ffffff;
+}
+
+body.dark-mode .fav-btn {
+    background: rgba(19, 27, 46, 0.85);
+    border-color: #23304c;
+    color: #94a3b8;
+}
+
+body.dark-mode .result-summary {
+    color: #94a3b8;
+}
+
+body.dark-mode .no-results h2 {
+    color: #f8fafc;
+}
+
+body.dark-mode .no-results p {
+    color: #94a3b8;
+}

@@ -6,6 +6,17 @@
   <meta charset="UTF-8">
   <meta name="description" content="CampusConnect - Your campus services, events, notices and student resources in one place.">
   <title>CampusConnect — Your Campus, In One Place</title>
+    <link rel="stylesheet" href="Main/tokens.css">
+  <script>
+    (function() {
+      var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', t);
+      if (t === 'dark') {
+        if (document.body) document.body.classList.add('dark-mode');
+        else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('dark-mode'); });
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="Main/style.css">
   <link rel="stylesheet" href="Main/home.css">
   <link rel="stylesheet" href="Main/home-no-animation.css">
@@ -27,6 +38,7 @@
       <a href="index.html" class="active">Home</a>
       <a href="Main/dashboard.html">Dashboard</a>
       <a href="Main/contact.html">Contact</a>
+      <button type="button" class="cc-theme-toggle" aria-label="Toggle theme"></button>
       <a href="Main/signin.html" class="nav-signin">Sign In</a>
     </nav>
   </header>
@@ -307,6 +319,10 @@
     </div>
   </footer>
 
+    <script src="Main/theme.js"></script>
+  <script src="Main/vendor/gsap.min.js"></script>
+  <script src="Main/vendor/ScrollTrigger.min.js"></script>
+  <script src="Main/gsap-motion.js"></script>
   <script src="Main/script.js"></script>
   <script>
     lucide.createIcons();

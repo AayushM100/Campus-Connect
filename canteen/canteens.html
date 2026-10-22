@@ -6,6 +6,17 @@
     <meta name="description" content="Explore Campus Bites canteens and food categories">
     <title>Canteens | Campus Bites</title>
     <!-- Updated CSS paths -->
+        <link rel="stylesheet" href="../Main/tokens.css">
+    <script>
+      (function() {
+        var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+        if (t === 'dark') {
+          if (document.body) document.body.classList.add('dark-mode');
+          else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('dark-mode'); });
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/canteens.css">
     <link rel="stylesheet" href="css/cart.css">
@@ -13,14 +24,16 @@
 <body>
     <header class="navbar">
         <!-- Updated Logo Home link -->
-        <a href="/canteen/index.html" class="logo">
+        <a href="index.html" class="logo">
             🍽️ <span>Campus <span class="logo-highlight">Bites</span></span>
         </a>
         <nav>
             <!-- Updated Navigation links -->
-            <a href="/canteen/index.html">Home</a>
-            <a href="/canteen/canteens.html" class="active">Canteens</a>
-            <a href="/canteen/menu.html">Browse Cuisine</a>
+            <a href="index.html">Home</a>
+            <a href="canteens.html" class="active">Canteens</a>
+            <a href="menu.html">Browse Cuisine</a>
+                    <a href="../index.html" class="canteen-portal-link" style="margin-left: auto;">← CampusConnect</a>
+            <button type="button" class="cc-theme-toggle" aria-label="Toggle theme"></button>
         </nav>
     </header>
 
@@ -54,7 +67,7 @@
                     <p id="resultsText">All 3 canteens</p>
                 </div>
                 <!-- Updated Browse All link -->
-                <a href="/canteen/menu.html" class="browse-all">Browse all food →</a>
+                <a href="menu.html" class="browse-all">Browse all food →</a>
             </div>
 
             <div class="canteen-grid">
@@ -152,5 +165,10 @@
     <!-- Updated JS paths -->
     <script src="js/cart.js"></script>
     <script src="js/canteen.js"></script>
+    <script src="../Main/theme.js"></script>
+    <script src="../Main/vendor/gsap.min.js"></script>
+    <script src="../Main/vendor/ScrollTrigger.min.js"></script>
+    <script src="../Main/gsap-motion.js"></script>
+    <script src="js/cart.js"></script>
 </body>
 </html>

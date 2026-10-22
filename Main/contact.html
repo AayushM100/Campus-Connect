@@ -4,6 +4,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>CampusConnect — Contact Us</title>
+    <link rel="stylesheet" href="tokens.css">
+  <script>
+    (function() {
+      var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', t);
+      if (t === 'dark') {
+        if (document.body) document.body.classList.add('dark-mode');
+        else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('dark-mode'); });
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="contact.css">
   <link rel="stylesheet" href="navbar.css">
@@ -20,6 +31,7 @@
       <a href="../index.html">Home</a>
       <a href="dashboard.html">Dashboard</a>
       <a href="contact.html" class="active">Contact</a>
+      <button type="button" class="cc-theme-toggle" aria-label="Toggle theme"></button>
       <a href="signin.html" class="nav-signin">Sign In</a>
     </nav>
   </header>
@@ -77,6 +89,10 @@
     </div>
     <div class="footer-bottom"><p>CampusConnect | Dr. D. Y. Patil College of Engineering</p><p>Built by students, for students.</p></div>
   </footer>
+    <script src="theme.js"></script>
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
+  <script src="gsap-motion.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -1,0 +1,230 @@
+/* ==========================================================================
+   CampusConnect Design System Tokens
+   Shared CSS custom properties for typography, color palette, surfaces,
+   elevations, borders, transitions, and responsive layout.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Brand Identity Tokens */
+  --brand-orange: #ea580c;
+  --brand-orange-hover: #c2410c;
+  --brand-orange-light: #fb923c;
+  --brand-orange-subtle: #fff7ed;
+  --brand-orange-subtle-border: #ffedd5;
+  --brand-orange-glow: rgba(234, 88, 12, 0.18);
+
+  --brand-navy: #182033;
+  --brand-navy-light: #273149;
+  --brand-navy-dark: #0f172a;
+  --brand-navy-muted: #475569;
+
+  /* Typography Scale */
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Geometry & Spacing */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  --container-max: 1180px;
+  --container-wide: 1280px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Focus Indicator */
+  --focus-ring: 0 0 0 3px rgba(234, 88, 12, 0.28);
+
+  /* Light Theme (Default) */
+  --bg-canvas: #faf7f4;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
+  --bg-surface-secondary: #f5f0ea;
+  --bg-surface-hover: #fdfaf6;
+  --bg-surface-active: #faefe4;
+
+  --text-main: #182033;
+  --text-body: #334155;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --text-inverse: #ffffff;
+
+  --border-color: #ede4db;
+  --border-light: #f5ede4;
+  --border-bold: #d6cbbf;
+
+  --nav-bg: rgba(255, 255, 255, 0.94);
+  --nav-border: rgba(237, 228, 219, 0.85);
+
+  --card-bg: #ffffff;
+  --card-border: #ede4db;
+  --card-hover-border: #fed7aa;
+  --card-shadow: 0 4px 18px rgba(24, 32, 51, 0.05);
+  --card-hover-shadow: 0 14px 32px rgba(24, 32, 51, 0.09);
+
+  --input-bg: #ffffff;
+  --input-border: #e2d7cc;
+  --input-focus-border: var(--brand-orange);
+  --input-text: #182033;
+  --input-placeholder: #94a3b8;
+
+  --badge-bg: #fff7ed;
+  --badge-text: #c2410c;
+  --badge-border: #ffedd5;
+
+  --footer-bg: #182033;
+  --footer-text: #cbd5e1;
+  --footer-border: rgba(255, 255, 255, 0.1);
+
+  /* Backward Compatibility Aliases for Legacy Styles */
+  --primary: var(--brand-orange);
+  --primary-dark: var(--brand-orange-hover);
+  --background: var(--bg-canvas);
+  --cardbg: var(--card-bg);
+  --border: var(--border-color);
+  --radius: var(--radius-xl);
+  --hilight: #fed7aa;
+  --active: var(--brand-orange);
+  --dark-orange: var(--brand-orange-hover);
+  --orange: var(--brand-orange);
+  --light-orange: var(--bg-surface-secondary);
+  --very-light-orange: var(--bg-surface-hover);
+  --navy: var(--brand-navy);
+}
+
+/* ==========================================================================
+   Dark Theme Definition
+   Activated by html[data-theme="dark"] or body.dark-mode
+   ========================================================================== */
+html[data-theme="dark"],
+body.dark-mode {
+  --bg-canvas: #0b111e;
+  --bg-surface: #131b2e;
+  --bg-surface-elevated: #1a243d;
+  --bg-surface-secondary: #0f1626;
+  --bg-surface-hover: #1e2945;
+  --bg-surface-active: #233152;
+
+  --text-main: #f8fafc;
+  --text-body: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --text-inverse: #0b111e;
+
+  --border-color: #23304c;
+  --border-light: #1b263e;
+  --border-bold: #334468;
+
+  --nav-bg: rgba(19, 27, 46, 0.94);
+  --nav-border: rgba(35, 48, 76, 0.85);
+
+  --card-bg: #131b2e;
+  --card-border: #23304c;
+  --card-hover-border: var(--brand-orange);
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --card-hover-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+
+  --input-bg: #0f1626;
+  --input-border: #2a3a5c;
+  --input-focus-border: var(--brand-orange-light);
+  --input-text: #f8fafc;
+  --input-placeholder: #64748b;
+
+  --badge-bg: rgba(234, 88, 12, 0.15);
+  --badge-text: #fb923c;
+  --badge-border: rgba(234, 88, 12, 0.3);
+
+  --footer-bg: #080d17;
+  --footer-text: #94a3b8;
+  --footer-border: rgba(255, 255, 255, 0.08);
+
+  /* Legacy overrides for dark mode */
+  --background: var(--bg-canvas);
+  --cardbg: var(--card-bg);
+  --text-muted: var(--text-muted);
+  --border: var(--border-color);
+  --light-orange: var(--bg-surface-secondary);
+  --very-light-orange: var(--bg-surface-hover);
+}
+
+/* Base Body Styles */
+html {
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+  font-family: var(--font-sans);
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Standardized Theme Toggle Button */
+.cc-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  box-shadow: var(--card-shadow);
+  flex-shrink: 0;
+}
+
+.cc-theme-toggle:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--brand-orange);
+  color: var(--brand-orange);
+  transform: translateY(-1px);
+}
+
+.cc-theme-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.cc-theme-toggle svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 2;
+  transition: transform 0.3s ease;
+}
+
+.cc-theme-toggle:hover svg {
+  transform: rotate(15deg);
+}
+
+/* Utility Animations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

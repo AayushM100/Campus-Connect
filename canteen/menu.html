@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Browse food across Campus Bites canteens">
     <title>Browse Cuisine | Campus Bites</title>
+        <link rel="stylesheet" href="../Main/tokens.css">
+    <script>
+      (function() {
+        var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+        if (t === 'dark') {
+          if (document.body) document.body.classList.add('dark-mode');
+          else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('dark-mode'); });
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/menu.css">
     <link rel="stylesheet" href="css/cart.css">
@@ -22,6 +33,8 @@
             <a href="index.html">Home</a>
             <a href="canteens.html">Canteens</a>
             <a href="menu.html" class="active">Browse Cuisine</a>
+                    <a href="../index.html" class="canteen-portal-link" style="margin-left: auto;">← CampusConnect</a>
+            <button type="button" class="cc-theme-toggle" aria-label="Toggle theme"></button>
         </nav>
     </header>
 
@@ -91,6 +104,10 @@
     </footer>
 
     <script src="js/cart.js"></script>
+        <script src="../Main/theme.js"></script>
+    <script src="../Main/vendor/gsap.min.js"></script>
+    <script src="../Main/vendor/ScrollTrigger.min.js"></script>
+    <script src="../Main/gsap-motion.js"></script>
     <script src="js/menu.js"></script>
 </body>
 

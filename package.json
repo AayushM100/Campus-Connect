@@ -14,5 +14,8 @@
     "lost-and-found"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "gsap": "^3.15.0"
+  }
 }
