@@ -507,89 +507,63 @@ if (document.readyState === "loading") {
 }
 
 
-async function checkout() {
-    // 1. Get cart items from localStorage
-    const cart = loadCart();
-    
-    if (cart.length === 0) {
-        alert("Your cart is empty!");
-        return;
-    }
+async function processPayment() {
+    const cart = JSON.parse(localStorage.getItem("campus_bites_cart")) || [];
+    if (cart.length === 0) return alert("Cart is empty!");
 
-    // Calculate total bill
     const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const canteenName = cart[0].canteen || "Cafeteria";
+    const name = document.getElementById("cust-name").value;
+    const dept = document.getElementById("cust-dept").value;
+    const phone = document.getElementById("cust-phone").value;
 
-    // Simple prompts for student details (you can replace these with a modal form later)
-    const customerName = prompt("Enter your Name for the order:");
-    const customerPhone = prompt("Enter your Phone Number:");
-
-    if (!customerName || !customerPhone) {
-        alert("Name and Phone number are required to place an order.");
-        return;
-    }
+    if (!name || !dept || !phone) return alert("Please fill all details!");
 
     try {
-        // 2. Call backend to create Razorpay Order
         const response = await fetch("https://campus-connect-1-0q94.onrender.com/api/create-order", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 amount: totalAmount,
-                canteen: canteenName,
-                customer_name: customerName,
-                customer_phone: customerPhone
+                canteen: cart[0].canteen || "Cafeteria",
+                customer_name: name,
+                department: dept,
+                customer_phone: phone,
+                cart_items: cart
             })
         });
 
         const orderData = await response.json();
 
-        if (!response.ok) throw new Error(orderData.error || "Failed to create order");
-
-        // 3. Configure Razorpay Popup Options
         const options = {
             key: orderData.key,
             amount: orderData.amount,
             currency: orderData.currency,
             name: "Campus Bites",
-            description: `Order from ${canteenName}`,
+            description: `${dept} Dept - ${name}`,
             order_id: orderData.order_id,
             handler: async function (response) {
-                // 4. Verify payment on backend upon successful completion
                 const verifyRes = await fetch("https://campus-connect-1-0q94.onrender.com/api/verify-payment", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        razorpay_order_id: response.razorpay_order_id,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature: response.razorpay_signature
-                    })
+                    body: JSON.stringify(response)
                 });
 
                 const verifyData = await verifyRes.json();
-
                 if (verifyData.success) {
-                    alert("🎉 Payment Successful! Your order has been placed.");
-                    localStorage.removeItem("campus_bites_cart"); // Clear cart
-                    window.location.reload();
+                    localStorage.removeItem("campus_bites_cart");
+                    // Pass the order ID in the URL to display on the success page
+                    window.location.href = `/success.html?order_id=${response.razorpay_order_id}`; 
                 } else {
-                    alert("❌ Payment verification failed: " + verifyData.error);
+                    alert("Payment verification failed.");
                 }
             },
-            prefill: {
-                name: customerName,
-                contact: customerPhone
-            },
-            theme: {
-                color: "#c26d38" // Matches your Campus Bites theme color
-            }
+            prefill: { name: name, contact: phone },
+            theme: { color: "#c26d38" }
         };
 
         const rzp = new Razorpay(options);
         rzp.open();
-
     } catch (err) {
         console.error("Checkout error:", err);
-        alert("Something went wrong during checkout. Please try again.");
     }
 }
