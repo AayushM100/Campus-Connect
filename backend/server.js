@@ -133,76 +133,38 @@ const razorpay = new Razorpay({
 // Create Razorpay order.
 app.post("/api/create-order", async (req, res) => {
     try {
-        const {
-            amount,
-            canteen,
-            customer_name,
-            customer_phone
-        } = req.body;
+        const { amount, canteen, customer_name, department, customer_phone, cart_items } = req.body;
 
-        const numericAmount = Number(amount);
-
-        if (
-            !Number.isFinite(numericAmount) ||
-            numericAmount <= 0
-        ) {
-            return res.status(400).json({
-                error: "A valid amount is required"
-            });
-        }
-
-        if (
-            !process.env.RAZORPAY_KEY_ID ||
-            !process.env.RAZORPAY_KEY_SECRET
-        ) {
-            return res.status(500).json({
-                error: "Razorpay is not configured"
-            });
-        }
-
-        // Amount sent to Razorpay must be in paise.
         const options = {
-            amount: Math.round(numericAmount * 100),
+            amount: Math.round(amount * 100),
             currency: "INR",
-            receipt: `receipt_${Date.now()}`
+            receipt: `receipt_${Date.now()}`,
         };
 
-        const razorpayOrder =
-            await razorpay.orders.create(options);
+        const razorpayOrder = await razorpay.orders.create(options);
 
-        // Save the pending order.
-        await query(
-            `INSERT INTO orders
-                (
-                    razorpay_order_id,
-                    canteen,
-                    customer_name,
-                    customer_phone,
-                    total_amount,
-                    status
-                )
-             VALUES (?, ?, ?, ?, ?, 'PENDING')`,
-            [
-                razorpayOrder.id,
-                canteen || null,
-                customer_name || null,
-                customer_phone || null,
-                numericAmount
-            ]
-        );
+        // 1. Save the main order details
+        await query(`
+            INSERT INTO orders (razorpay_order_id, canteen, customer_name, department, customer_phone, total_amount, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+        `, [razorpayOrder.id, canteen, customer_name, department, customer_phone, amount]);
 
-        return res.json({
-            order_id: razorpayOrder.id,
-            currency: razorpayOrder.currency,
-            amount: razorpayOrder.amount,
-            key: process.env.RAZORPAY_KEY_ID
+        // 2. Loop through the cart array and save each specific food item
+        for (let item of cart_items) {
+            await query(`
+                INSERT INTO order_items (razorpay_order_id, item_name, quantity, price)
+                VALUES (?, ?, ?, ?)
+            `, [razorpayOrder.id, item.name, item.quantity, item.price]);
+        }
+
+        res.json({ 
+            order_id: razorpayOrder.id, 
+            currency: razorpayOrder.currency, 
+            amount: razorpayOrder.amount, 
+            key: process.env.RAZORPAY_KEY_ID 
         });
     } catch (err) {
-        handleRouteError(
-            "Razorpay order creation failed:",
-            res,
-            err
-        );
+        handleRouteError("Razorpay order creation failed:", res, err);
     }
 });
 
