@@ -427,59 +427,69 @@ function showCart() {
         content.appendChild(totalRow);
 
         // Checkout placeholder.
+        // Razorpay checkout button.
         const checkoutButton = document.createElement("button");
+
         checkoutButton.className = "checkout-button";
         checkoutButton.type = "button";
         checkoutButton.textContent = "Proceed to Checkout";
 
-        checkoutButton.addEventListener("click", function () {
-            alert("Checkout is not connected yet.");
+        checkoutButton.addEventListener("click", async function () {
+            checkoutButton.disabled = true;
+            checkoutButton.textContent = "Connecting to checkout...";
+
+            try {
+                await checkout();
+            } finally {
+                checkoutButton.disabled = false;
+                checkoutButton.textContent = "Proceed to Checkout";
+            }
         });
 
         content.appendChild(checkoutButton);
+
+        panel.append(header, content);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+
+        // Close using the close button.
+        closeButton.addEventListener("click", function () {
+            overlay.remove();
+        });
+
+        // Close when clicking outside the panel.
+        overlay.addEventListener("click", function (event) {
+            if (event.target === overlay) {
+                overlay.remove();
+            }
+        });
+
+        // Delegate quantity-button clicks from the cart panel.
+        // This continues to work when showCart() re-renders the cart.
+        content.addEventListener("click", function (event) {
+            const button = event.target.closest(".quantity-button");
+
+            if (!button) return;
+
+            changeCartQuantity(
+                button.dataset.id,
+                button.dataset.canteen,
+                button.dataset.action
+            );
+        });
+
+        // Close cart with Escape.
+        function handleEscape(event) {
+            if (event.key === "Escape") {
+                overlay.remove();
+                document.removeEventListener("keydown", handleEscape);
+            }
+        }
+
+        document.addEventListener("keydown", handleEscape);
     }
 
-    panel.append(header, content);
-    overlay.appendChild(panel);
-    document.body.appendChild(overlay);
-
-    // Close using the close button.
-    closeButton.addEventListener("click", function () {
-        overlay.remove();
-    });
-
-    // Close when clicking outside the panel.
-    overlay.addEventListener("click", function (event) {
-        if (event.target === overlay) {
-            overlay.remove();
-        }
-    });
-
-    // Delegate quantity-button clicks from the cart panel.
-    // This continues to work when showCart() re-renders the cart.
-    content.addEventListener("click", function (event) {
-        const button = event.target.closest(".quantity-button");
-
-        if (!button) return;
-
-        changeCartQuantity(
-            button.dataset.id,
-            button.dataset.canteen,
-            button.dataset.action
-        );
-    });
-
-    // Close cart with Escape.
-    function handleEscape(event) {
-        if (event.key === "Escape") {
-            overlay.remove();
-            document.removeEventListener("keydown", handleEscape);
-        }
-    }
-
-    document.addEventListener("keydown", handleEscape);
 }
-
 
 // =====================================================
 // 13. INITIALISE CART
@@ -499,8 +509,8 @@ if (document.readyState === "loading") {
 
 async function checkout() {
     // 1. Get cart items from localStorage
-    const cart = JSON.parse(localStorage.getItem("campus_bites_cart")) || [];
-
+    const cart = loadCart();
+    
     if (cart.length === 0) {
         alert("Your cart is empty!");
         return;
