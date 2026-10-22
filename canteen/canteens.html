@@ -1,26 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Explore Campus Bites canteens and food categories">
     <title>Canteens | Campus Bites</title>
     <!-- Updated CSS paths -->
-        <link rel="stylesheet" href="../Main/tokens.css">
+    <link rel="stylesheet" href="../Main/tokens.css">
     <script>
-      (function() {
-        var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        document.documentElement.setAttribute('data-theme', t);
-        if (t === 'dark') {
-          if (document.body) document.body.classList.add('dark-mode');
-          else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('dark-mode'); });
-        }
-      })();
+        (function () {
+            var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', t);
+            if (t === 'dark') {
+                if (document.body) document.body.classList.add('dark-mode');
+                else document.addEventListener('DOMContentLoaded', function () { document.body.classList.add('dark-mode'); });
+            }
+        })();
     </script>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/canteens.css">
     <link rel="stylesheet" href="css/cart.css">
 </head>
+
 <body>
     <header class="navbar">
         <!-- Updated Logo Home link -->
@@ -32,7 +34,7 @@
             <a href="index.html">Home</a>
             <a href="canteens.html" class="active">Canteens</a>
             <a href="menu.html">Browse Cuisine</a>
-                    <a href="../index.html" class="canteen-portal-link" style="margin-left: auto;">← CampusConnect</a>
+            <a href="../index.html" class="canteen-portal-link" style="margin-left: auto;">← CampusConnect</a>
             <button type="button" class="cc-theme-toggle" aria-label="Toggle theme"></button>
         </nav>
     </header>
@@ -59,6 +61,33 @@
                 </button>
             </div>
         </section>
+        
+
+        <div id="checkout-form" style="display: none; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 15px;">
+            <input type="text" id="cust-name" placeholder="Full Name" required
+                style="width: 100%; margin-bottom: 10px; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+
+            <select id="cust-dept" required
+                style="width: 100%; margin-bottom: 10px; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                <option value="" disabled selected>Select Department</option>
+                <option value="Computer">Computer Engineering</option>
+                <option value="IT">Information Technology</option>
+                <option value="AI_DS">AI & Data Science</option>
+                <option value="E_TC">E&TC</option>
+                <option value="Mechanical">Mechanical Engineering</option>
+                <option value="Civil">Civil Engineering</option>
+                <option value="Faculty">Faculty/Staff</option>
+            </select>
+
+            <input type="tel" id="cust-phone" placeholder="Phone Number" required
+                style="width: 100%; margin-bottom: 10px; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+
+            <button onclick="processPayment()"
+                style="width: 100%; background: #c26d38; color: white; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                Pay via Razorpay
+            </button>
+        </div>
+
 
         <section class="canteen-section">
             <div class="section-heading">
@@ -71,15 +100,10 @@
             </div>
 
             <div class="canteen-grid">
-                <article class="canteen-card"
-                    data-canteen="cafeteria"
-                    data-opening="9"
-                    data-closing="18">
-                    <img
-                        class="canteen-image"
+                <article class="canteen-card" data-canteen="cafeteria" data-opening="9" data-closing="18">
+                    <img class="canteen-image"
                         src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&amp;fit=crop&amp;w=1000&amp;q=80"
-                        alt="Cafeteria dining area"
-                        loading="lazy">
+                        alt="Cafeteria dining area" loading="lazy">
                     <div class="canteen-content">
                         <div class="canteen-title">
                             <h3>Cafeteria</h3>
@@ -98,15 +122,10 @@
                     </div>
                 </article>
 
-                <article class="canteen-card"
-                    data-canteen="timeless"
-                    data-opening="6"
-                    data-closing="18">
-                    <img
-                        class="canteen-image"
+                <article class="canteen-card" data-canteen="timeless" data-opening="6" data-closing="18">
+                    <img class="canteen-image"
                         src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&amp;fit=crop&amp;w=1000&amp;q=80"
-                        alt="Timeless cafe interior"
-                        loading="lazy">
+                        alt="Timeless cafe interior" loading="lazy">
                     <div class="canteen-content">
                         <div class="canteen-title">
                             <h3>Timeless</h3>
@@ -125,15 +144,10 @@
                     </div>
                 </article>
 
-                <article class="canteen-card"
-                    data-canteen="nescafe"
-                    data-opening="6"
-                    data-closing="18">
-                    <img
-                        class="canteen-image"
+                <article class="canteen-card" data-canteen="nescafe" data-opening="6" data-closing="18">
+                    <img class="canteen-image"
                         src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=1000&amp;q=80"
-                        alt="Coffee cup"
-                        loading="lazy">
+                        alt="Coffee cup" loading="lazy">
                     <div class="canteen-content">
                         <div class="canteen-title">
                             <h3>Nescafe</h3>
@@ -165,14 +179,15 @@
     <!-- Updated JS paths -->
     <script src="js/cart.js"></script>
     <script src="js/canteen.js"></script>
-<<<<<<<<< Temporary merge branch 1
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-=========
-    <script src="../Main/theme.js"></script>
-    <script src="../Main/vendor/gsap.min.js"></script>
-    <script src="../Main/vendor/ScrollTrigger.min.js"></script>
-    <script src="../Main/gsap-motion.js"></script>
-    <script src="js/cart.js"></script>
->>>>>>>>> Temporary merge branch 2
+    <<<<<<<<< Temporary merge branch 1 <script src="https://checkout.razorpay.com/v1/checkout.js">
+        </script>
+        =========
+        <script src="../Main/theme.js"></script>
+        <script src="../Main/vendor/gsap.min.js"></script>
+        <script src="../Main/vendor/ScrollTrigger.min.js"></script>
+        <script src="../Main/gsap-motion.js"></script>
+        <script src="js/cart.js"></script>
+        >>>>>>>>> Temporary merge branch 2
 </body>
+
 </html>
