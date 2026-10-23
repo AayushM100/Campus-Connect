@@ -22,7 +22,7 @@ const DB = "campus_canteen";
 // ======================================================
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 
 app.use(
     "/food-images",
@@ -125,36 +125,173 @@ const FAVOURITES_TABLE =
 // 4. RAZORPAY INTEGRATION
 // ======================================================
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+let razorpayClient;
+let orderTablesPromise;
+
+function getRazorpayClient() {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        throw new Error("Razorpay is not configured");
+    }
+
+    if (!razorpayClient) {
+        razorpayClient = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET
+        });
+    }
+
+    return razorpayClient;
+}
+
+// The checkout is deployable against the existing database without a separate
+// manual migration. A matching SQL migration is also included in backend/sql.
+function ensureOrderTables() {
+    if (!orderTablesPromise) {
+        orderTablesPromise = Promise.all([
+            query(`CREATE TABLE IF NOT EXISTS orders (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                razorpay_order_id VARCHAR(64) NOT NULL,
+                razorpay_payment_id VARCHAR(64) DEFAULT NULL,
+                canteen VARCHAR(100) NOT NULL,
+                customer_name VARCHAR(80) NOT NULL,
+                department VARCHAR(80) NOT NULL,
+                customer_phone VARCHAR(15) NOT NULL,
+                total_amount DECIMAL(10,2) NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY unique_razorpay_order (razorpay_order_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`),
+            query(`CREATE TABLE IF NOT EXISTS order_items (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                razorpay_order_id VARCHAR(64) NOT NULL,
+                item_name VARCHAR(150) NOT NULL,
+                quantity INT UNSIGNED NOT NULL,
+                price DECIMAL(10,2) NOT NULL,
+                PRIMARY KEY (id),
+                KEY order_items_razorpay_order (razorpay_order_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+        ]);
+    }
+
+    return orderTablesPromise;
+}
+
+function validateCustomerDetails(body) {
+    const customerName = String(body.customer_name || "").trim();
+    const department = String(body.department || "").trim();
+    const phone = String(body.customer_phone || "").replace(/\D/g, "");
+    const rollNumber = String(body.roll_number || "").trim();
+
+    if (
+        !customerName || customerName.length > 80 ||
+        !department || department.length > 80 ||
+        !/^\d{10}$/.test(phone) ||
+        rollNumber.length > 40
+    ) {
+        return null;
+    }
+
+    return { customerName, department, phone, rollNumber };
+}
+
+async function getVerifiedCart(cartItems) {
+    if (!Array.isArray(cartItems) || !cartItems.length || cartItems.length > 30) {
+        throw new Error("Your cart is empty or invalid");
+    }
+
+    const verifiedItems = [];
+    for (const rawItem of cartItems) {
+        const itemId = Number(rawItem && rawItem.item_id);
+        const quantity = Number(rawItem && rawItem.quantity);
+        const canteen = normalizeCanteen(rawItem && rawItem.canteen);
+
+        if (!Number.isInteger(itemId) || itemId < 1 ||
+            !Number.isInteger(quantity) || quantity < 1 || quantity > 20 ||
+            !canteen) {
+            throw new Error("One or more cart items are invalid");
+        }
+
+        const [rows] = await query(
+            `SELECT item_name, price, is_available
+             FROM ${menuFrom()}
+             WHERE id = ? AND LOWER(canteen) = ?
+             LIMIT 1`,
+            [itemId, canteen]
+        );
+        const menuItem = rows[0];
+        if (!menuItem || Number(menuItem.is_available) !== 1) {
+            throw new Error("An item in your cart is no longer available");
+        }
+
+        verifiedItems.push({
+            item_id: itemId,
+            canteen,
+            item_name: String(menuItem.item_name),
+            price: Number(menuItem.price),
+            quantity
+        });
+    }
+
+    const totalAmount = Number(verifiedItems.reduce(
+        (total, item) => total + item.price * item.quantity,
+        0
+    ).toFixed(2));
+
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0 || totalAmount > 10000) {
+        throw new Error("The order total is invalid");
+    }
+
+    return { verifiedItems, totalAmount };
+}
 
 // Create Razorpay order.
 app.post("/api/create-order", async (req, res) => {
     try {
-        const { amount, canteen, customer_name, department, customer_phone, cart_items } = req.body;
+        const customer = validateCustomerDetails(req.body || {});
+        if (!customer) {
+            return res.status(400).json({
+                error: "Enter a name, department and a valid 10-digit phone number"
+            });
+        }
+
+        const { verifiedItems, totalAmount } = await getVerifiedCart(
+            req.body && req.body.cart_items
+        );
+        await ensureOrderTables();
 
         const options = {
-            amount: Math.round(amount * 100),
+            amount: Math.round(totalAmount * 100),
             currency: "INR",
-            receipt: `receipt_${Date.now()}`,
+            receipt: `cb_${Date.now()}`,
+            notes: {
+                department: customer.department,
+                roll_number: customer.rollNumber || "Not provided"
+            }
         };
 
-        const razorpayOrder = await razorpay.orders.create(options);
+        const razorpayOrder = await getRazorpayClient().orders.create(options);
+        const canteensInOrder = [...new Set(
+            verifiedItems.map((item) => item.canteen)
+        )].join(", ");
 
-        // 1. Save the main order details
         await query(`
             INSERT INTO orders (razorpay_order_id, canteen, customer_name, department, customer_phone, total_amount, status)
             VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
-        `, [razorpayOrder.id, canteen, customer_name, department, customer_phone, amount]);
+        `, [
+            razorpayOrder.id,
+            canteensInOrder,
+            customer.customerName,
+            customer.department,
+            customer.phone,
+            totalAmount
+        ]);
 
-        // 2. Loop through the cart array and save each specific food item
-        for (let item of cart_items) {
+        for (const item of verifiedItems) {
             await query(`
                 INSERT INTO order_items (razorpay_order_id, item_name, quantity, price)
                 VALUES (?, ?, ?, ?)
-            `, [razorpayOrder.id, item.name, item.quantity, item.price]);
+            `, [razorpayOrder.id, item.item_name, item.quantity, item.price]);
         }
 
         res.json({ 
@@ -164,6 +301,12 @@ app.post("/api/create-order", async (req, res) => {
             key: process.env.RAZORPAY_KEY_ID 
         });
     } catch (err) {
+        if (err && /configured/i.test(err.message || "")) {
+            return res.status(503).json({ error: err.message });
+        }
+        if (err && /cart|item|total/i.test(err.message || "")) {
+            return res.status(400).json({ error: err.message });
+        }
         handleRouteError("Razorpay order creation failed:", res, err);
     }
 });
