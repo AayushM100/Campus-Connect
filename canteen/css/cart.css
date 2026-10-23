@@ -227,7 +227,8 @@
 .checkout-summary {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 18px;
     margin: 20px 28px 0;
     padding: 13px 15px;
     border-radius: 10px;
@@ -236,7 +237,56 @@
     font-size: 14px;
 }
 
-.checkout-summary strong {
+.checkout-summary-items {
+    min-width: 0;
+    flex: 1;
+}
+
+.checkout-summary-count {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 700;
+}
+
+.checkout-summary ul {
+    display: grid;
+    gap: 5px;
+    max-height: 96px;
+    margin: 0;
+    padding: 0 5px 0 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.checkout-summary li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: #7a4b38;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.checkout-summary li span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.checkout-summary li small {
+    color: #a56d55;
+    font-size: inherit;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.checkout-summary li strong {
+    flex: 0 0 auto;
+    color: #9e5637;
+    font-size: 13px;
+}
+
+.checkout-summary-total {
+    flex: 0 0 auto;
     color: #b85d37;
     font-size: 17px;
 }
@@ -562,4 +612,12 @@ body.dark-mode .student-details-form label {
 body.dark-mode .checkout-summary {
     background: #30231f;
     color: #f5c5ad;
+}
+
+body.dark-mode .checkout-summary li {
+    color: #f3c0a6;
+}
+
+body.dark-mode .checkout-summary li small {
+    color: #dca185;
 }

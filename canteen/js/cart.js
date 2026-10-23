@@ -535,6 +535,19 @@ function addCheckoutCloseBehaviour(overlay, closeButton) {
     });
 }
 
+function getCheckoutItemsMarkup() {
+    return cart.map(function (item) {
+        const quantity = Number(item.quantity) || 1;
+        const itemTotal = (Number(item.price) || 0) * quantity;
+
+        return `
+            <li>
+                <span>${escapeHTML(item.item_name)} <small>× ${quantity}</small></span>
+                <strong>${formatCurrency(itemTotal)}</strong>
+            </li>`;
+    }).join("");
+}
+
 function showStudentDetails() {
     const cartOverlay = document.querySelector("#cartOverlay");
     if (cartOverlay) cartOverlay.remove();
@@ -555,8 +568,11 @@ function showStudentDetails() {
                 <button class="checkout-close" type="button" aria-label="Close checkout">×</button>
             </div>
             <div class="checkout-summary">
-                <span>${getCartCount()} item${getCartCount() === 1 ? "" : "s"}</span>
-                <strong>${formatCurrency(getCartTotal())}</strong>
+                <div class="checkout-summary-items">
+                    <span class="checkout-summary-count">${getCartCount()} item${getCartCount() === 1 ? "" : "s"}</span>
+                    <ul>${getCheckoutItemsMarkup()}</ul>
+                </div>
+                <strong class="checkout-summary-total">${formatCurrency(getCartTotal())}</strong>
             </div>
             <form class="student-details-form" novalidate>
                 <label>Student name
