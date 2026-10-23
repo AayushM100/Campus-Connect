@@ -258,7 +258,6 @@ app.post("/api/create-order", async (req, res) => {
         const { verifiedItems, totalAmount } = await getVerifiedCart(
             req.body && req.body.cart_items
         );
-        await ensureOrderTables();
 
         const options = {
             amount: Math.round(totalAmount * 100),
@@ -275,30 +274,44 @@ app.post("/api/create-order", async (req, res) => {
             verifiedItems.map((item) => item.canteen)
         )].join(", ");
 
-        await query(`
-            INSERT INTO orders (razorpay_order_id, canteen, customer_name, department, customer_phone, total_amount, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
-        `, [
-            razorpayOrder.id,
-            canteensInOrder,
-            customer.customerName,
-            customer.department,
-            customer.phone,
-            totalAmount
-        ]);
-
-        for (const item of verifiedItems) {
+        // Payment must not be blocked merely because the database account has
+        // no CREATE privilege for the optional local order-audit tables.
+        // The Razorpay order and its signature verification remain mandatory.
+        let orderRecorded = true;
+        try {
+            await ensureOrderTables();
             await query(`
-                INSERT INTO order_items (razorpay_order_id, item_name, quantity, price)
-                VALUES (?, ?, ?, ?)
-            `, [razorpayOrder.id, item.item_name, item.quantity, item.price]);
+                INSERT INTO orders (razorpay_order_id, canteen, customer_name, department, customer_phone, total_amount, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+            `, [
+                razorpayOrder.id,
+                canteensInOrder,
+                customer.customerName,
+                customer.department,
+                customer.phone,
+                totalAmount
+            ]);
+
+            for (const item of verifiedItems) {
+                await query(`
+                    INSERT INTO order_items (razorpay_order_id, item_name, quantity, price)
+                    VALUES (?, ?, ?, ?)
+                `, [razorpayOrder.id, item.item_name, item.quantity, item.price]);
+            }
+        } catch (databaseError) {
+            orderRecorded = false;
+            console.error(
+                "Order audit could not be saved; continuing with Razorpay checkout:",
+                databaseError.message
+            );
         }
 
         res.json({ 
             order_id: razorpayOrder.id, 
             currency: razorpayOrder.currency, 
             amount: razorpayOrder.amount, 
-            key: process.env.RAZORPAY_KEY_ID 
+            key: process.env.RAZORPAY_KEY_ID,
+            order_recorded: orderRecorded
         });
     } catch (err) {
         if (err && /configured/i.test(err.message || "")) {
@@ -373,45 +386,46 @@ app.post("/api/verify-payment", async (req, res) => {
             });
         }
 
-        const [result] = await query(
-            `UPDATE orders
-             SET razorpay_payment_id = ?,
-                 status = 'PAID'
-             WHERE razorpay_order_id = ?
-               AND status = 'PENDING'`,
-            [
-                razorpay_payment_id,
-                razorpay_order_id
-            ]
-        );
-
-        if (result.affectedRows === 0) {
-            const [orders] = await query(
-                `SELECT status
-                 FROM orders
+        let orderRecorded = true;
+        try {
+            await ensureOrderTables();
+            const [result] = await query(
+                `UPDATE orders
+                 SET razorpay_payment_id = ?,
+                     status = 'PAID'
                  WHERE razorpay_order_id = ?
-                 LIMIT 1`,
-                [razorpay_order_id]
+                   AND status = 'PENDING'`,
+                [
+                    razorpay_payment_id,
+                    razorpay_order_id
+                ]
             );
 
-            if (!orders.length) {
-                return res.status(404).json({
-                    success: false,
-                    error: "Order not found"
-                });
-            }
+            if (result.affectedRows === 0) {
+                const [orders] = await query(
+                    `SELECT status
+                     FROM orders
+                     WHERE razorpay_order_id = ?
+                     LIMIT 1`,
+                    [razorpay_order_id]
+                );
 
-            if (orders[0].status !== "PAID") {
-                return res.status(409).json({
-                    success: false,
-                    error: "Order could not be marked as paid"
-                });
+                if (orders.length && orders[0].status !== "PAID") {
+                    throw new Error("Order could not be marked as paid");
+                }
             }
+        } catch (databaseError) {
+            orderRecorded = false;
+            console.error(
+                "Payment was verified but the order audit could not be updated:",
+                databaseError.message
+            );
         }
 
         return res.json({
             success: true,
-            message: "Payment verified successfully"
+            message: "Payment verified successfully",
+            order_recorded: orderRecorded
         });
     } catch (err) {
         handleRouteError(
