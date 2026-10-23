@@ -426,24 +426,15 @@ function showCart() {
         totalRow.append(totalLabel, totalAmount);
         content.appendChild(totalRow);
 
-        // Checkout placeholder.
-        // Razorpay checkout button.
+        // Checkout.
         const checkoutButton = document.createElement("button");
 
         checkoutButton.className = "checkout-button";
         checkoutButton.type = "button";
         checkoutButton.textContent = "Proceed to Checkout";
 
-        checkoutButton.addEventListener("click", async function () {
-            checkoutButton.disabled = true;
-            checkoutButton.textContent = "Connecting to checkout...";
-
-            try {
-                await checkout();
-            } finally {
-                checkoutButton.disabled = false;
-                checkoutButton.textContent = "Proceed to Checkout";
-            }
+        checkoutButton.addEventListener("click", function () {
+            showStudentDetails();
         });
 
         content.appendChild(checkoutButton);
@@ -507,63 +498,230 @@ if (document.readyState === "loading") {
 }
 
 
-async function processPayment() {
-    const cart = JSON.parse(localStorage.getItem("campus_bites_cart")) || [];
-    if (cart.length === 0) return alert("Cart is empty!");
+// =====================================================
+// 14. RAZORPAY CHECKOUT
+// =====================================================
+// Payment is kept in this file so it remains independent from favourites,
+// campus picks and the individual menu-page scripts.
 
-    const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const name = document.getElementById("cust-name").value;
-    const dept = document.getElementById("cust-dept").value;
-    const phone = document.getElementById("cust-phone").value;
+const CHECKOUT_PROFILE_KEY = "campusBitesCheckoutProfile";
+const CHECKOUT_API_URL = window.CAMPUS_BITES_API_URL || "/api";
 
-    if (!name || !dept || !phone) return alert("Please fill all details!");
+function formatCurrency(amount) {
+    return "₹" + Number(amount || 0).toFixed(2).replace(/\.00$/, "");
+}
 
+function closeCheckoutOverlay() {
+    const overlay = document.querySelector("#checkoutOverlay");
+    if (overlay) overlay.remove();
+}
+
+function getSavedCheckoutProfile() {
     try {
-        const response = await fetch("https://campus-connect-1-0q94.onrender.com/api/create-order", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                amount: totalAmount,
-                canteen: cart[0].canteen || "Cafeteria",
-                customer_name: name,
-                department: dept,
-                customer_phone: phone,
-                cart_items: cart
+        return JSON.parse(localStorage.getItem(CHECKOUT_PROFILE_KEY) || "{}") || {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function saveCheckoutProfile(profile) {
+    localStorage.setItem(CHECKOUT_PROFILE_KEY, JSON.stringify(profile));
+}
+
+function addCheckoutCloseBehaviour(overlay, closeButton) {
+    closeButton.addEventListener("click", closeCheckoutOverlay);
+    overlay.addEventListener("click", function (event) {
+        if (event.target === overlay) closeCheckoutOverlay();
+    });
+}
+
+function showStudentDetails() {
+    const cartOverlay = document.querySelector("#cartOverlay");
+    if (cartOverlay) cartOverlay.remove();
+    closeCheckoutOverlay();
+
+    const profile = getSavedCheckoutProfile();
+    const overlay = document.createElement("div");
+    overlay.id = "checkoutOverlay";
+    overlay.className = "checkout-overlay";
+    overlay.innerHTML = `
+        <section class="checkout-card" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle">
+            <div class="checkout-header">
+                <div>
+                    <p class="checkout-kicker">CAMPUS BITES</p>
+                    <h2 id="checkoutTitle">Almost there</h2>
+                    <p>Tell us who is picking up this order.</p>
+                </div>
+                <button class="checkout-close" type="button" aria-label="Close checkout">×</button>
+            </div>
+            <div class="checkout-summary">
+                <span>${getCartCount()} item${getCartCount() === 1 ? "" : "s"}</span>
+                <strong>${formatCurrency(getCartTotal())}</strong>
+            </div>
+            <form class="student-details-form" novalidate>
+                <label>Student name
+                    <input name="studentName" type="text" maxlength="80" autocomplete="name" required placeholder="Your full name" value="${escapeHTML(profile.studentName || "")}">
+                </label>
+                <label>Phone number
+                    <input name="phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="[0-9]{10}" required placeholder="10-digit mobile number" value="${escapeHTML(profile.phone || "")}">
+                </label>
+                <label>Department
+                    <select name="department" required>
+                        <option value="">Select department</option>
+                        <option value="Computer Engineering">Computer Engineering</option>
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="AI & Data Science">AI & Data Science</option>
+                        <option value="E&TC">E&TC</option>
+                        <option value="Mechanical Engineering">Mechanical Engineering</option>
+                        <option value="Civil Engineering">Civil Engineering</option>
+                        <option value="Faculty / Staff">Faculty / Staff</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </label>
+                <label>Roll number <span class="field-optional">optional</span>
+                    <input name="rollNumber" type="text" maxlength="40" autocomplete="off" placeholder="For easier pickup" value="${escapeHTML(profile.rollNumber || "")}">
+                </label>
+                <p class="checkout-note">You will choose UPI, scan a QR code where available, or select another payment option on Razorpay’s secure screen.</p>
+                <p class="checkout-error" role="alert" hidden></p>
+                <div class="checkout-actions">
+                    <button class="checkout-back" type="button">Back to cart</button>
+                    <button class="checkout-pay" type="submit">Pay ${formatCurrency(getCartTotal())}</button>
+                </div>
+            </form>
+        </section>`;
+
+    document.body.appendChild(overlay);
+    const form = overlay.querySelector(".student-details-form");
+    const department = form.elements.department;
+    department.value = profile.department || "";
+
+    overlay.querySelector(".checkout-back").addEventListener("click", function () {
+        closeCheckoutOverlay();
+        showCart();
+    });
+    addCheckoutCloseBehaviour(overlay, overlay.querySelector(".checkout-close"));
+
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        startRazorpayCheckout(form, overlay);
+    });
+
+    form.elements.studentName.focus();
+}
+
+function displayCheckoutError(overlay, message) {
+    const error = overlay.querySelector(".checkout-error");
+    error.textContent = message;
+    error.hidden = false;
+}
+
+async function postCheckoutRequest(path, data) {
+    const response = await fetch(`${CHECKOUT_API_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    });
+    const body = await response.json().catch(function () { return {}; });
+    if (!response.ok) throw new Error(body.error || "Something went wrong. Please try again.");
+    return body;
+}
+
+async function startRazorpayCheckout(form, overlay) {
+    const formData = new FormData(form);
+    const profile = {
+        studentName: String(formData.get("studentName") || "").trim(),
+        phone: String(formData.get("phone") || "").replace(/\D/g, ""),
+        department: String(formData.get("department") || "").trim(),
+        rollNumber: String(formData.get("rollNumber") || "").trim()
+    };
+    const payButton = overlay.querySelector(".checkout-pay");
+    const originalText = payButton.textContent;
+    overlay.querySelector(".checkout-error").hidden = true;
+
+    if (!profile.studentName || !profile.department || !/^\d{10}$/.test(profile.phone)) {
+        displayCheckoutError(overlay, "Enter your name, department and a valid 10-digit phone number.");
+        return;
+    }
+    if (typeof window.Razorpay !== "function") {
+        displayCheckoutError(overlay, "Secure checkout is still loading. Please wait a moment and try again.");
+        return;
+    }
+
+    payButton.disabled = true;
+    payButton.textContent = "Preparing secure payment...";
+    try {
+        // The server recalculates prices from the menu database. Never trust a browser total.
+        const order = await postCheckoutRequest("/create-order", {
+            customer_name: profile.studentName,
+            customer_phone: profile.phone,
+            department: profile.department,
+            roll_number: profile.rollNumber,
+            cart_items: cart.map(function (item) {
+                return {
+                    item_id: item.item_id,
+                    canteen: item.canteen,
+                    quantity: item.quantity
+                };
             })
         });
+        saveCheckoutProfile(profile);
 
-        const orderData = await response.json();
-
-        const options = {
-            key: orderData.key,
-            amount: orderData.amount,
-            currency: orderData.currency,
+        const razorpay = new window.Razorpay({
+            key: order.key,
+            amount: order.amount,
+            currency: order.currency,
             name: "Campus Bites",
-            description: `${dept} Dept - ${name}`,
-            order_id: orderData.order_id,
-            handler: async function (response) {
-                const verifyRes = await fetch("https://campus-connect-1-0q94.onrender.com/api/verify-payment", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(response)
-                });
-
-                const verifyData = await verifyRes.json();
-                if (verifyData.success) {
-                    localStorage.removeItem("campus_bites_cart");
-                    // Pass the order ID in the URL to display on the success page
-                    window.location.href = `/success.html?order_id=${response.razorpay_order_id}`; 
-                } else {
-                    alert("Payment verification failed.");
+            description: "Campus food order",
+            order_id: order.order_id,
+            prefill: {
+                name: profile.studentName,
+                contact: profile.phone
+            },
+            notes: {
+                department: profile.department,
+                roll_number: profile.rollNumber || "Not provided"
+            },
+            theme: { color: "#c96e46" },
+            modal: {
+                ondismiss: function () {
+                    payButton.disabled = false;
+                    payButton.textContent = originalText;
                 }
             },
-            prefill: { name: name, contact: phone },
-            theme: { color: "#c26d38" }
-        };
-
-        const rzp = new Razorpay(options);
-        rzp.open();
-    } catch (err) {
-        console.error("Checkout error:", err);
+            handler: async function (payment) {
+                try {
+                    payButton.textContent = "Verifying payment...";
+                    await postCheckoutRequest("/verify-payment", payment);
+                    cart = [];
+                    saveCart();
+                    updateCartCount();
+                    showPaymentSuccess(overlay);
+                } catch (error) {
+                    payButton.disabled = false;
+                    payButton.textContent = originalText;
+                    displayCheckoutError(overlay, error.message || "Payment could not be verified. Please contact the canteen with your payment ID.");
+                }
+            }
+        });
+        razorpay.on("payment.failed", function () {
+            payButton.disabled = false;
+            payButton.textContent = originalText;
+        });
+        razorpay.open();
+    } catch (error) {
+        payButton.disabled = false;
+        payButton.textContent = originalText;
+        displayCheckoutError(overlay, error.message || "Could not start secure checkout. Please try again.");
     }
+}
+
+function showPaymentSuccess(overlay) {
+    overlay.querySelector(".checkout-card").innerHTML = `
+        <div class="payment-success">
+            <div class="payment-success-icon" aria-hidden="true">✓</div>
+            <h2>Payment confirmed</h2>
+            <p>Your Campus Bites order has been placed. Please show your name at the canteen counter for pickup.</p>
+            <button class="checkout-pay" type="button">Done</button>
+        </div>`;
+    overlay.querySelector(".checkout-pay").addEventListener("click", closeCheckoutOverlay);
 }

@@ -156,6 +156,222 @@
     background: #b85d37;
 }
 
+.checkout-button:disabled,
+.checkout-pay:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
+/* Student details shown before the Razorpay checkout. */
+.checkout-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(23, 32, 51, 0.52);
+    overflow-y: auto;
+}
+
+.checkout-card {
+    width: min(100%, 510px);
+    border-radius: 18px;
+    background: #fff;
+    color: #172033;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
+    overflow: hidden;
+}
+
+.checkout-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 26px 28px 20px;
+    border-bottom: 1px solid #eee7e0;
+}
+
+.checkout-kicker {
+    margin: 0 0 6px;
+    color: #c96e46;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.checkout-header h2 {
+    margin: 0;
+    font-size: 25px;
+    line-height: 1.2;
+}
+
+.checkout-header p:not(.checkout-kicker) {
+    margin: 7px 0 0;
+    color: #667085;
+    font-size: 14px;
+}
+
+.checkout-close {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border: 1px solid #e9e3dd;
+    border-radius: 50%;
+    background: #faf8f6;
+    color: #344054;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.checkout-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 28px 0;
+    padding: 13px 15px;
+    border-radius: 10px;
+    background: #fff5ef;
+    color: #6f351f;
+    font-size: 14px;
+}
+
+.checkout-summary strong {
+    color: #b85d37;
+    font-size: 17px;
+}
+
+.student-details-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+    padding: 20px 28px 28px;
+}
+
+.student-details-form label {
+    display: grid;
+    gap: 7px;
+    color: #344054;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.student-details-form label:nth-child(1),
+.student-details-form label:nth-child(3) {
+    grid-column: 1 / -1;
+}
+
+.student-details-form input,
+.student-details-form select {
+    width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+    border: 1px solid #d8d4cf;
+    border-radius: 9px;
+    background: #fff;
+    color: #172033;
+    padding: 10px 12px;
+    font: inherit;
+    font-weight: 500;
+}
+
+.student-details-form input:focus,
+.student-details-form select:focus {
+    outline: 3px solid rgba(201, 110, 70, 0.18);
+    border-color: #c96e46;
+}
+
+.field-optional {
+    color: #8490a0;
+    font-weight: 500;
+}
+
+.checkout-note,
+.checkout-error,
+.checkout-actions {
+    grid-column: 1 / -1;
+}
+
+.checkout-note {
+    margin: 1px 0 0;
+    color: #667085;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.checkout-error {
+    margin: -2px 0 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fff1f0;
+    color: #b42318;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.checkout-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 3px;
+}
+
+.checkout-back,
+.checkout-pay {
+    min-height: 44px;
+    border-radius: 9px;
+    padding: 10px 16px;
+    font: inherit;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.checkout-back {
+    border: 1px solid #d8d4cf;
+    background: #fff;
+    color: #475467;
+}
+
+.checkout-pay {
+    border: 1px solid #c96e46;
+    background: #c96e46;
+    color: #fff;
+}
+
+.checkout-pay:hover {
+    background: #b85d37;
+}
+
+.payment-success {
+    padding: 48px 34px 36px;
+    text-align: center;
+}
+
+.payment-success-icon {
+    display: grid;
+    width: 58px;
+    height: 58px;
+    place-items: center;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background: #e9f8ef;
+    color: #157a3f;
+    font-size: 30px;
+    font-weight: 800;
+}
+
+.payment-success h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.payment-success p {
+    margin: 10px auto 24px;
+    max-width: 340px;
+    color: #667085;
+    line-height: 1.6;
+}
+
 /* Empty cart message */
 
 .empty-cart {
@@ -213,6 +429,28 @@
 
     .cart-content {
         padding: 16px;
+    }
+
+    .checkout-overlay {
+        align-items: end;
+        padding: 0;
+    }
+
+    .checkout-card {
+        max-height: 94vh;
+        border-radius: 18px 18px 0 0;
+        overflow-y: auto;
+    }
+
+    .checkout-header,
+    .student-details-form {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .checkout-summary {
+        margin-left: 20px;
+        margin-right: 20px;
     }
 }
 
@@ -291,4 +529,37 @@ body.dark-mode .empty-cart p {
 
 body.dark-mode .empty-cart .empty-cart-hint {
     color: #fb923c;
+}
+
+body.dark-mode .checkout-card {
+    background: #131b2e;
+    color: #f8fafc;
+}
+
+body.dark-mode .checkout-header {
+    border-bottom-color: #23304c;
+}
+
+body.dark-mode .checkout-header p:not(.checkout-kicker),
+body.dark-mode .checkout-note,
+body.dark-mode .payment-success p {
+    color: #a7b4ca;
+}
+
+body.dark-mode .checkout-close,
+body.dark-mode .student-details-form input,
+body.dark-mode .student-details-form select,
+body.dark-mode .checkout-back {
+    border-color: #30405e;
+    background: #1a243d;
+    color: #f8fafc;
+}
+
+body.dark-mode .student-details-form label {
+    color: #dce6f5;
+}
+
+body.dark-mode .checkout-summary {
+    background: #30231f;
+    color: #f5c5ad;
 }
