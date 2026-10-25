@@ -670,6 +670,9 @@ function getItemTimestamp(item) {
 
     // 3. Fallback deterministically by serial_number
     const serial = Number(item.serial_number) || 0;
+    if (serial >= 25) {
+        return 1792900000000 + (serial * 60000);
+    }
     return 1790000000000 + (serial * 3600000);
 
 }

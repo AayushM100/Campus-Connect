@@ -952,7 +952,11 @@
                     return match[1].length === 10 ? num * 1000 : num;
                 }
             }
-            return 1790000000000 + ((Number(item.serial_number) || 0) * 3600000);
+            const serial = Number(item.serial_number) || 0;
+            if (serial >= 25) {
+                return 1792900000000 + (serial * 60000);
+            }
+            return 1790000000000 + (serial * 3600000);
         }
 
         function formatItemDate(item) {
