@@ -1705,8 +1705,12 @@
                         // READ RESPONSE
                         // =================================================
 
-                        const data =
-                            await response.json();
+                        let data = {};
+                        try {
+                            data = await response.json();
+                        } catch (parseError) {
+                            data = { error: "Server returned " + response.status + " " + response.statusText };
+                        }
 
 
 
@@ -1739,14 +1743,17 @@
 
                         console.log(
                             "Saved image:",
-                            data.item.image
+                            data.item ? data.item.image : "none"
                         );
 
 
 
                         // =================================================
-                        // SUCCESS MESSAGE
+                        // RESET BUTTON AND FORM BEFORE ALERT
                         // =================================================
+
+                        submitButton.disabled = false;
+                        submitButton.innerText = "Submit Report";
 
                         alert(
                             "Item reported successfully!"
@@ -1798,6 +1805,10 @@
                     catch (
                         error
                     ) {
+
+                        // Ensure button is restored immediately before alert opens
+                        submitButton.disabled = false;
+                        submitButton.innerText = "Submit Report";
 
                         console.error(
                             "Report error:",

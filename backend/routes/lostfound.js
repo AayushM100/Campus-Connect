@@ -445,7 +445,13 @@ const imageMap = {
         "/lost_and_found/uploads/items/chem.jpg",
 
     "macbook":
-        "/lost_and_found/uploads/items/laptopcharger.jpg"
+        "/lost_and_found/uploads/items/laptopcharger.jpg",
+
+    "trimax":
+        "/lost_and_found/uploads/items/trimax.jpeg",
+
+    "trimax pen":
+        "/lost_and_found/uploads/items/trimax.jpeg"
 
 };
 
@@ -474,6 +480,7 @@ const vercelStaticImages = new Set([
     "scientific calculator.jpg",
     "spectacles.jpg",
     "spectacles_1790846841290.jpg",
+    "trimax.jpeg",
     "umbrella.jpg",
     "usbdrive.jpg",
     "waterbottle.jpg",
@@ -582,6 +589,11 @@ function getCorrectImage(item) {
         if (cleanPath.startsWith("lost_and_found/uploads/items/")) {
             const leaf = path.basename(cleanPath);
             if (vercelStaticImages.has(leaf)) return "/" + cleanPath;
+        }
+
+        // 5. If cleanPath is an uploaded item path, point to Render's public uploads
+        if (cleanPath.startsWith("uploads/items/")) {
+            return "https://campus-connect-4n2t.onrender.com/" + cleanPath;
         }
 
     }
@@ -1056,16 +1068,11 @@ router.post(
                     req.file.buffer
                 );
 
-                const mimeType = req.file.mimetype || "image/jpeg";
-                imagePath =
-                    "data:" +
-                    mimeType +
-                    ";base64," +
-                    req.file.buffer.toString("base64");
+                imagePath = "uploads/items/" + uniqueName;
 
                 console.log(
-                    "Saved image to local disk and generated data URI:",
-                    uniqueName
+                    "Saved image to local disk:",
+                    imagePath
                 );
 
             }
@@ -1273,6 +1280,47 @@ router.use(
 
 
         next();
+
+    }
+);
+
+
+// =====================================================
+// DELETE ITEM (FOR TEST CLEANUP / RECORD DELETION)
+// =====================================================
+
+router.delete(
+    "/item/:id",
+    function(req, res) {
+
+        const id = req.params.id;
+        const targetTable = req.query.type === "found" ? "found_items" : "lost_items";
+
+        const deleteQuery = "DELETE FROM `" + LF_DB + "`.`" + targetTable + "` WHERE serial_number = ? LIMIT 1";
+
+        req.db.query(
+            deleteQuery,
+            [id],
+            function(err, result) {
+
+                if (err) {
+                    console.error("Delete error:", err);
+                    return res.status(500).json({
+                        error: "Could not delete item",
+                        details: err.message
+                    });
+                }
+
+                console.log("Deleted item " + id + " from " + targetTable + ", affectedRows: " + result.affectedRows);
+
+                res.json({
+                    success: true,
+                    deleted: result.affectedRows,
+                    id: id
+                });
+
+            }
+        );
 
     }
 );
