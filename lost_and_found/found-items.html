@@ -57,7 +57,7 @@
                 Lost Items
             </a>
 
-            <a href="found-items.html">
+            <a href="found-items.html" class="active">
                 Found Items
             </a>
 
@@ -108,6 +108,14 @@
 
             </p>
 
+        </div>
+
+        <div class="items-filter-bar">
+            <div class="search-input-wrapper">
+                <span class="search-icon-inline">🔍</span>
+                <input type="text" id="filterInput" placeholder="Filter found items by name, location, or keyword..." />
+            </div>
+            <div class="item-count-badge" id="itemCountBadge">Loading items...</div>
         </div>
 
 
@@ -379,92 +387,154 @@
                     throw new Error("Server returned HTTP " + response.status);
                 }
 
+        // =====================================================
+        // FILTER & COUNT HELPERS
+        // =====================================================
+
+        const filterInput = document.getElementById("filterInput");
+        const itemCountBadge = document.getElementById("itemCountBadge");
+
+        function updateItemCount(count) {
+            if (itemCountBadge) {
+                itemCountBadge.textContent = `Showing ${count} item${count === 1 ? '' : 's'}`;
+            }
+        }
+
+        function createFoundCard(item) {
+            const itemName = item.item_name || "Unknown Item";
+            const description = item.description || "No description provided.";
+            const location = item.location || "Location not specified";
+            const status = item.status || "found";
+            const imageUrl = resolveItemImageUrl(item.image, itemName);
+
+            let imageHTML;
+            if (imageUrl) {
+                imageHTML = `
+                    <img
+                        src="${escapeHTML(imageUrl)}"
+                        alt="${escapeHTML(itemName)}"
+                        class="lost-item-image"
+                        onerror="handleItemImageError(this, '${escapeHTML(itemName)}')"
+                    >
+                `;
+            } else {
+                imageHTML = `
+                    <span style="font-size: 60px;">📦</span>
+                `;
+            }
+
+            const card = document.createElement("div");
+            card.className = "item-card";
+            card.setAttribute("data-status", status.toLowerCase());
+
+            card.innerHTML = `
+                <!-- ================= IMAGE ================= -->
+                <div class="item-image orange-image">
+                    ${imageHTML}
+                </div>
+
+                <!-- ================= CONTENT ================= -->
+                <div class="item-content">
+                    <div class="item-top">
+                        <span class="status found">
+                            FOUND
+                        </span>
+                        <span class="date">
+                            ${formatItemDate(item)}
+                        </span>
+                    </div>
+
+                    <h3>
+                        ${escapeHTML(itemName)}
+                    </h3>
+
+                    <p>
+                        ${escapeHTML(description)}
+                    </p>
+
+                    <div class="item-location">
+                        📍 ${escapeHTML(location)}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function renderFoundCards(itemsList) {
+            foundItemsGrid.innerHTML = "";
+
+            if (!Array.isArray(itemsList) || itemsList.length === 0) {
+                foundItemsGrid.innerHTML = `
+                    <div class="no-items">
+                        <h3>No matching found items.</h3>
+                        <p>Try refining your search keyword or report a lost item.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            itemsList.forEach(function(item) {
+                foundItemsGrid.appendChild(createFoundCard(item));
+            });
+        }
+
+        if (filterInput) {
+            filterInput.addEventListener("input", function() {
+                const query = this.value.trim().toLowerCase();
+                const items = window.allFoundItems || [];
+
+                if (!query) {
+                    renderFoundCards(items);
+                    updateItemCount(items.length);
+                    return;
+                }
+
+                const filtered = items.filter(item => {
+                    const name = String(item.item_name || "").toLowerCase();
+                    const desc = String(item.description || "").toLowerCase();
+                    const loc = String(item.location || "").toLowerCase();
+                    return name.includes(query) || desc.includes(query) || loc.includes(query);
+                });
+
+                renderFoundCards(filtered);
+                updateItemCount(filtered.length);
+            });
+        }
+
+        // =====================================================
+        // LOAD FOUND ITEMS
+        // =====================================================
+
+        async function loadFoundItems() {
+
+            try {
+
+                const response =
+                    await fetch(API_URL);
+
+                if (!response.ok) {
+                    throw new Error("Server returned HTTP " + response.status);
+                }
+
                 const items =
                     await response.json();
 
                 console.log("Found items received from Express:", items);
 
-                foundItemsGrid.innerHTML = "";
-
                 if (!Array.isArray(items) || items.length === 0) {
-                    foundItemsGrid.innerHTML = `
-                        <div class="no-items">
-                            <h3>No found items reported yet.</h3>
-                            <p>Be the first to report a found item.</p>
-                        </div>
-                    `;
+                    window.allFoundItems = [];
+                    renderFoundCards([]);
+                    updateItemCount(0);
                     return;
                 }
 
                 // Deterministic sort: newest first
                 items.sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
+                window.allFoundItems = items;
 
-                // =================================================
-                // CREATE CARDS FROM DATABASE
-                // =================================================
-
-                items.forEach(function(item) {
-
-                    const itemName = item.item_name || "Unknown Item";
-                    const description = item.description || "No description provided.";
-                    const location = item.location || "Location not specified";
-                    const status = item.status || "found";
-                    const imageUrl = resolveItemImageUrl(item.image, itemName);
-
-                    let imageHTML;
-                    if (imageUrl) {
-                        imageHTML = `
-                            <img
-                                src="${escapeHTML(imageUrl)}"
-                                alt="${escapeHTML(itemName)}"
-                                class="lost-item-image"
-                                onerror="handleItemImageError(this, '${escapeHTML(itemName)}')"
-                            >
-                        `;
-                    } else {
-                        imageHTML = `
-                            <span style="font-size: 60px;">📦</span>
-                        `;
-                    }
-
-                    const card = document.createElement("div");
-                    card.className = "item-card";
-                    card.setAttribute("data-status", status.toLowerCase());
-
-                    card.innerHTML = `
-                        <!-- ================= IMAGE ================= -->
-                        <div class="item-image orange-image">
-                            ${imageHTML}
-                        </div>
-
-                        <!-- ================= CONTENT ================= -->
-                        <div class="item-content">
-                            <div class="item-top">
-                                <span class="status found">
-                                    FOUND
-                                </span>
-                                <span class="date">
-                                    ${formatItemDate(item)}
-                                </span>
-                            </div>
-
-                            <h3>
-                                ${escapeHTML(itemName)}
-                            </h3>
-
-                            <p>
-                                ${escapeHTML(description)}
-                            </p>
-
-                            <div class="item-location">
-                                📍 ${escapeHTML(location)}
-                            </div>
-                        </div>
-                    `;
-
-                    foundItemsGrid.appendChild(card);
-
-                });
+                renderFoundCards(items);
+                updateItemCount(items.length);
 
             }
 
@@ -481,6 +551,10 @@
                         <p>The Lost & Found service is currently unavailable. Please try again in a moment.</p>
                     </div>
                 `;
+
+                if (itemCountBadge) {
+                    itemCountBadge.textContent = "Offline";
+                }
 
             }
 

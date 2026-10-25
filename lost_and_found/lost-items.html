@@ -64,7 +64,7 @@
                 Home
             </a>
 
-            <a href="lost-items.html">
+            <a href="lost-items.html" class="active">
                 Lost Items
             </a>
 
@@ -121,6 +121,14 @@
 
             </p>
 
+        </div>
+
+        <div class="items-filter-bar">
+            <div class="search-input-wrapper">
+                <span class="search-icon-inline">🔍</span>
+                <input type="text" id="filterInput" placeholder="Filter lost items by name, location, or keyword..." />
+            </div>
+            <div class="item-count-badge" id="itemCountBadge">Loading items...</div>
         </div>
 
 
@@ -475,6 +483,62 @@
 
 
         // =====================================================
+        // FILTER & COUNT HELPERS
+        // =====================================================
+
+        const filterInput = document.getElementById("filterInput");
+        const itemCountBadge = document.getElementById("itemCountBadge");
+
+        function updateItemCount(count) {
+            if (itemCountBadge) {
+                itemCountBadge.textContent = `Showing ${count} item${count === 1 ? '' : 's'}`;
+            }
+        }
+
+        function renderLostCards(itemsList) {
+            lostItemsGrid.innerHTML = "";
+
+            if (!Array.isArray(itemsList) || itemsList.length === 0) {
+                lostItemsGrid.innerHTML = `
+                    <div class="no-items">
+                        <h3>No matching lost items.</h3>
+                        <p>Try refining your search keyword or check found items.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            itemsList.forEach(function(item) {
+                const card = createCard(item);
+                lostItemsGrid.appendChild(card);
+            });
+        }
+
+        if (filterInput) {
+            filterInput.addEventListener("input", function() {
+                const query = this.value.trim().toLowerCase();
+                const items = window.allLostItems || [];
+
+                if (!query) {
+                    renderLostCards(items);
+                    updateItemCount(items.length);
+                    return;
+                }
+
+                const filtered = items.filter(item => {
+                    const name = String(item.item_name || "").toLowerCase();
+                    const desc = String(item.description || "").toLowerCase();
+                    const loc = String(item.location || "").toLowerCase();
+                    return name.includes(query) || desc.includes(query) || loc.includes(query);
+                });
+
+                renderLostCards(filtered);
+                updateItemCount(filtered.length);
+            });
+        }
+
+
+        // =====================================================
         // LOAD LOST ITEMS
         // =====================================================
 
@@ -492,25 +556,19 @@
 
                 console.log("ITEMS FROM DATABASE:", items);
 
-                lostItemsGrid.innerHTML = "";
-
                 if (!Array.isArray(items) || items.length === 0) {
-                    lostItemsGrid.innerHTML = `
-                        <div class="no-items">
-                            <h3>No lost items reported yet.</h3>
-                            <p>Be the first to report a lost item.</p>
-                        </div>
-                    `;
+                    window.allLostItems = [];
+                    renderLostCards([]);
+                    updateItemCount(0);
                     return;
                 }
 
                 // Deterministic sort: newest first
                 items.sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
+                window.allLostItems = items;
 
-                items.forEach(function(item) {
-                    const card = createCard(item);
-                    lostItemsGrid.appendChild(card);
-                });
+                renderLostCards(items);
+                updateItemCount(items.length);
 
             }
 
@@ -524,6 +582,10 @@
                         <p>Please make sure the Express server is running.</p>
                     </div>
                 `;
+
+                if (itemCountBadge) {
+                    itemCountBadge.textContent = "Offline";
+                }
 
             }
 

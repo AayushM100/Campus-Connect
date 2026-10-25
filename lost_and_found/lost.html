@@ -58,7 +58,7 @@
 
         <nav>
 
-            <a href="#home">
+            <a href="#home" class="active">
                 Home
             </a>
 
@@ -102,7 +102,7 @@
         <div class="hero-text">
 
             <p class="small-heading">
-                CAMPUS LOST & FOUND
+                YOUR CAMPUS. CONNECTED.
             </p>
 
 
@@ -111,7 +111,7 @@
                 Lost something?
 
                 <span>
-                    Let's find it.
+                    Let's bring it back.
                 </span>
 
             </h1>
@@ -119,9 +119,8 @@
 
             <p class="hero-description">
 
-                A simple place for students to report lost items,
-                post things they have found and reconnect belongings
-                with their owners.
+                A seamless directory for students to report lost belongings,
+                post found items, and instantly reconnect on campus.
 
             </p>
 
@@ -176,6 +175,15 @@
                         Search
                     </button>
 
+                </div>
+
+                <div class="quick-chips">
+                    <span class="chip" data-query="phone">📱 Phone</span>
+                    <span class="chip" data-query="earphones">🎧 Earphones</span>
+                    <span class="chip" data-query="bag">🎒 Bag</span>
+                    <span class="chip" data-query="id card">💳 ID Card</span>
+                    <span class="chip" data-query="keys">🗝️ Keys</span>
+                    <span class="chip" data-query="bottle">🧴 Bottle</span>
                 </div>
 
             </div>
@@ -2010,6 +2018,17 @@
 
                 }
             );
+
+            // Quick discovery chips click handlers
+            document.querySelectorAll(".quick-chips .chip").forEach(function(chip) {
+                chip.addEventListener("click", function() {
+                    const query = this.getAttribute("data-query");
+                    if (query && searchInput) {
+                        searchInput.value = query;
+                        searchButton.click();
+                    }
+                });
+            });
 
         }
 
