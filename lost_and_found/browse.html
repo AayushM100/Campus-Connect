@@ -15,6 +15,17 @@
         Browse Items - Campus Lost & Found
     </title>
 
+    <link rel="stylesheet" href="../Main/tokens.css">
+    <script>
+      (function() {
+        var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+        if (t === 'dark') {
+          if (document.body) document.body.classList.add('dark-mode');
+          else document.addEventListener('DOMContentLoaded', function() { document.body.classList.add('dark-mode'); });
+        }
+      })();
+    </script>
     <link
         rel="stylesheet"
         href="lost.css"
@@ -300,244 +311,188 @@
         // =====================================================
 
         const imageMap = {
-
-            "mobile cover":
-                "uploads/items/mobilecover.jpg",
-
-            "mobile":
-                "uploads/items/mobile.jpg",
-
-            "black wallet":
-                "uploads/items/blackwallet.jpg",
-
-            "college id card":
-                "uploads/items/collegeidcard.jpg",
-
-            "keychain":
-                "uploads/items/keychain.jpg",
-
-            "umbrella":
-                "uploads/items/umbrella.jpg",
-
-            "laptop charger":
-                "uploads/items/laptopcharger.jpg",
-
-            "notebook":
-                "uploads/items/notebook.jpg",
-
-            "earphones":
-                "uploads/items/earphones.jpg",
-
-            "usb drive":
-                "uploads/items/usbdrive.jpg",
-
-            "scientific calculator":
-                "uploads/items/scientificcalculator.jpg",
-
-            "water bottle":
-                "uploads/items/waterbottle.jpg"
-
+            "mobile": "/lost_and_found/uploads/items/mobile.jpg",
+            "mobile phone": "/lost_and_found/uploads/items/mobile.jpg",
+            "phone": "/lost_and_found/uploads/items/mobile.jpg",
+            "smartphone": "/lost_and_found/uploads/items/mobile.jpg",
+            "iphone": "/lost_and_found/uploads/items/mobile.jpg",
+            "mobile cover": "/lost_and_found/uploads/items/mobilecover.jpg",
+            "phone cover": "/lost_and_found/uploads/items/mobilecover.jpg",
+            "black wallet": "/lost_and_found/uploads/items/blackwallet.jpg",
+            "wallet": "/lost_and_found/uploads/items/blackwallet.jpg",
+            "purse": "/lost_and_found/uploads/items/blackwallet.jpg",
+            "black bag": "/lost_and_found/uploads/items/blackbag.jpg",
+            "blackbag": "/lost_and_found/uploads/items/blackbag.jpg",
+            "bag": "/lost_and_found/uploads/items/blackbag.jpg",
+            "backpack": "/lost_and_found/uploads/items/blackbag.jpg",
+            "black backpack": "/lost_and_found/uploads/items/blackbag.jpg",
+            "pouch": "/lost_and_found/uploads/items/pouch.jpg",
+            "pencil pouch": "/lost_and_found/uploads/items/pouch.jpg",
+            "stationery pouch": "/lost_and_found/uploads/items/pouch.jpg",
+            "college id card": "/lost_and_found/uploads/items/collegeidcard.jpg",
+            "college id": "/lost_and_found/uploads/items/collegeidcard.jpg",
+            "id card": "/lost_and_found/uploads/items/collegeidcard.jpg",
+            "identity card": "/lost_and_found/uploads/items/collegeidcard.jpg",
+            "keychain": "/lost_and_found/uploads/items/keychain.jpg",
+            "key chain": "/lost_and_found/uploads/items/keychain.jpg",
+            "keys": "/lost_and_found/uploads/items/keychain.jpg",
+            "umbrella": "/lost_and_found/uploads/items/umbrella.jpg",
+            "laptop charger": "/lost_and_found/uploads/items/laptopcharger.jpg",
+            "laptopcharger": "/lost_and_found/uploads/items/laptopcharger.jpg",
+            "charger": "/lost_and_found/uploads/items/laptopcharger.jpg",
+            "notebook": "/lost_and_found/uploads/items/notebook.jpg",
+            "book": "/lost_and_found/uploads/items/notebook.jpg",
+            "register": "/lost_and_found/uploads/items/notebook.jpg",
+            "notes": "/lost_and_found/uploads/items/notebook.jpg",
+            "earphones": "/lost_and_found/uploads/items/earphones.jpg",
+            "earphone": "/lost_and_found/uploads/items/earphones.jpg",
+            "airpods": "/lost_and_found/uploads/items/earphones.jpg",
+            "earbuds": "/lost_and_found/uploads/items/earphones.jpg",
+            "earbuds case": "/lost_and_found/uploads/items/earphones.jpg",
+            "usb drive": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "usb": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "usbdrive": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "pendrive": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "pen drive": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "scientific calculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "scientificcalculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "calculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "casio scientific calculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "casio calculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "water bottle": "/lost_and_found/uploads/items/waterbottle.jpg",
+            "waterbottle": "/lost_and_found/uploads/items/waterbottle.jpg",
+            "bottle": "/lost_and_found/uploads/items/waterbottle.jpg",
+            "blue water bottle": "/lost_and_found/uploads/items/waterbottle.jpg",
+            "geometry box": "/lost_and_found/uploads/items/geometrybox.jpg",
+            "geometrybox": "/lost_and_found/uploads/items/geometrybox.jpg",
+            "spectacles": "/lost_and_found/uploads/items/spectacles.jpg",
+            "spectacle": "/lost_and_found/uploads/items/spectacles.jpg",
+            "glasses": "/lost_and_found/uploads/items/spectacles.jpg",
+            "specs": "/lost_and_found/uploads/items/spectacles.jpg",
+            "spectacles case": "/lost_and_found/uploads/items/spectacles.jpg",
+            "chem": "/lost_and_found/uploads/items/chem.jpg",
+            "chemistry": "/lost_and_found/uploads/items/chem.jpg",
+            "chemistry book": "/lost_and_found/uploads/items/chem.jpg",
+            "chemistry lab journal": "/lost_and_found/uploads/items/chem.jpg",
+            "lab file": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "labfile": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "lab": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "yellow file": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "yellowfile": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "file": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "ipad": "/lost_and_found/uploads/items/ipad.jpg",
+            "i pad": "/lost_and_found/uploads/items/ipad.jpg",
+            "apple ipad": "/lost_and_found/uploads/items/ipad.jpg",
+            "tablet": "/lost_and_found/uploads/items/ipad.jpg"
         };
 
 
-
         // =====================================================
-        // IMAGE URL
+        // TIMESTAMP & DATE HELPERS
         // =====================================================
 
-        function getImageUrl(item) {
-
-
-            let image =
-                String(item.image || "").trim();
-
-
-            // -------------------------------------------------
-            // NO IMAGE
-            // -------------------------------------------------
-
-            if (image === "") {
-
-                return getFallbackImage(item);
-
+        function getItemTimestamp(item) {
+            if (item.created_at) {
+                const t = new Date(item.created_at).getTime();
+                if (!isNaN(t) && t > 0) return t;
             }
-
-
-
-            // -------------------------------------------------
-            // DATA IMAGE
-            // -------------------------------------------------
-
-            if (
-                image.startsWith("data:image/")
-            ) {
-
-                return image;
-
+            if (item.image) {
+                const match = String(item.image).match(/_(\d{10,13})/);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    return match[1].length === 10 ? num * 1000 : num;
+                }
             }
+            return 1790000000000 + ((Number(item.serial_number) || 0) * 3600000);
+        }
 
-
-
-            // -------------------------------------------------
-            // NORMAL HTTP IMAGE
-            // -------------------------------------------------
-
-            if (
-                image.startsWith("http://") ||
-                image.startsWith("https://")
-            ) {
-
-                return image;
-
-            }
-
-
-
-            // -------------------------------------------------
-            // ABSOLUTE WEBSITE PATH
-            // -------------------------------------------------
-
-            if (
-                image.startsWith("/")
-            ) {
-
-                return image;
-
-            }
-
-
-
-            // -------------------------------------------------
-            // NORMAL UPLOAD PATH
-            //
-            // Example:
-            // uploads/items/blackwallet.jpg
-            // -------------------------------------------------
-
-            image =
-                image.replace(/\\/g, "/");
-
-
-            if (
-                image.startsWith("uploads/")
-            ) {
-
-                return (
-                    "/lost_and_found/" +
-                    image
-                );
-
-            }
-
-
-
-            // -------------------------------------------------
-            // OLD CAMPUS-CONNECT PATH
-            // -------------------------------------------------
-
-            if (
-                image.includes(
-                    "/Campus-Connect/lost_and_found/"
-                )
-            ) {
-
-                const cleanPath =
-                    image.split(
-                        "/Campus-Connect/lost_and_found/"
-                    )[1];
-
-                return (
-                    "/lost_and_found/" +
-                    cleanPath
-                );
-
-            }
-
-
-
-            // -------------------------------------------------
-            // OLD RELATIVE PATH
-            // -------------------------------------------------
-
-            if (
-                image.includes(
-                    "lost_and_found/"
-                )
-            ) {
-
-                const cleanPath =
-                    image.split(
-                        "lost_and_found/"
-                    )[1];
-
-                return (
-                    "/lost_and_found/" +
-                    cleanPath
-                );
-
-            }
-
-
-
-            // -------------------------------------------------
-            // IMAGE FILE NAME ONLY
-            // -------------------------------------------------
-
-            if (
-                image.endsWith(".jpg") ||
-                image.endsWith(".jpeg") ||
-                image.endsWith(".png") ||
-                image.endsWith(".webp")
-            ) {
-
-                return (
-                    "/lost_and_found/uploads/items/" +
-                    image
-                );
-
-            }
-
-
-
-            // -------------------------------------------------
-            // FALLBACK IMAGE
-            // -------------------------------------------------
-
-            return getFallbackImage(item);
-
+        function formatItemDate(item) {
+            const ts = getItemTimestamp(item);
+            if (!ts) return "Recently";
+            const date = new Date(ts);
+            const now = new Date();
+            const diffHours = Math.round((now - date) / (1000 * 60 * 60));
+            if (diffHours >= 0 && diffHours < 24) return "Today";
+            if (diffHours >= 24 && diffHours < 48) return "Yesterday";
+            return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         }
 
 
-
         // =====================================================
-        // FALLBACK IMAGE
+        // RESOLVE ITEM IMAGE URL
         // =====================================================
 
-        function getFallbackImage(item) {
+        function getDictionaryFallback(itemName) {
+            if (!itemName) return "";
+            const key = String(itemName).trim().toLowerCase();
+            if (imageMap[key]) return imageMap[key];
+            const norm = key.replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+            if (imageMap[norm]) return imageMap[norm];
+            for (const [mapKey, path] of Object.entries(imageMap)) {
+                if ((key.length > 2 && mapKey.includes(key)) || (mapKey.length > 2 && key.includes(mapKey))) {
+                    return path;
+                }
+            }
+            return "";
+        }
 
+        function resolveItemImageUrl(image, itemName) {
+            let imageValue = image ? String(image).trim() : "";
 
-            const itemName =
-                String(
-                    item.item_name || ""
-                )
-                .trim()
-                .toLowerCase();
-
-
-            if (
-                imageMap[itemName]
-            ) {
-
-                return (
-                    "/uploads/" +
-                    imageMap[itemName]
-                );
-
+            if (imageValue.startsWith("data:") || imageValue.startsWith("http://") || imageValue.startsWith("https://")) {
+                return imageValue;
             }
 
+            if (imageValue !== "") {
+                const cleanPath = imageValue.replace(/\\/g, "/").replace(/^\/+/, "");
+                if (cleanPath.startsWith("lost_and_found/")) {
+                    return "/" + cleanPath;
+                }
+                if (cleanPath.startsWith("uploads/")) {
+                    return "/lost_and_found/" + cleanPath;
+                }
+                return "/lost_and_found/uploads/items/" + cleanPath.split("/").pop();
+            }
 
-            return "";
+            return getDictionaryFallback(itemName);
+        }
 
+        function handleItemImageError(imgEl, itemName) {
+            if (imgEl.getAttribute("data-fallback-tried") === "backend") {
+                imgEl.setAttribute("data-fallback-tried", "dict");
+                const dictFallback = getDictionaryFallback(itemName);
+                if (dictFallback && !imgEl.src.includes(dictFallback)) {
+                    imgEl.src = dictFallback;
+                    return;
+                }
+                showFallbackIcon(imgEl);
+                return;
+            }
+
+            if (!imgEl.getAttribute("data-fallback-tried")) {
+                imgEl.setAttribute("data-fallback-tried", "backend");
+                const filename = (imgEl.src || "").split("/").pop().split("?")[0];
+                if (filename && !imgEl.src.includes("campus-connect-4n2t.onrender.com")) {
+                    imgEl.src = "https://campus-connect-4n2t.onrender.com/uploads/items/" + filename;
+                    return;
+                }
+                const dictFallback = getDictionaryFallback(itemName);
+                if (dictFallback && !imgEl.src.includes(dictFallback)) {
+                    imgEl.setAttribute("data-fallback-tried", "dict");
+                    imgEl.src = dictFallback;
+                    return;
+                }
+            }
+
+            showFallbackIcon(imgEl);
+        }
+
+        function showFallbackIcon(imgEl) {
+            imgEl.style.display = "none";
+            const parent = imgEl.parentElement;
+            if (parent && !parent.querySelector(".image-fallback")) {
+                parent.innerHTML = '<div style="height:260px;display:flex;align-items:center;justify-content:center;font-size:70px;">📦</div>';
+            }
         }
 
 
@@ -682,6 +637,10 @@
                         ...lost,
                         ...found
                     ];
+
+                allItems.sort(function(a, b) {
+                    return getItemTimestamp(b) - getItemTimestamp(a);
+                });
 
 
 
@@ -997,37 +956,24 @@
                     // =================================================
 
                     const imageUrl =
-                        getImageUrl(item);
-
+                        resolveItemImageUrl(item.image, itemName);
 
                     let imageHTML;
-
-
 
                     if (
                         imageUrl !== ""
                     ) {
-
                         imageHTML = `
-
                             <img
                                 src="${escapeHTML(imageUrl)}"
                                 alt="${escapeHTML(itemName)}"
                                 class="browse-item-image"
-                                onerror="
-                                    this.onerror=null;
-                                    this.style.display='none';
-                                    this.parentElement.innerHTML='<div style=&quot;height:260px;display:flex;align-items:center;justify-content:center;font-size:70px;&quot;>📦</div>';
-                                "
+                                onerror="handleItemImageError(this, '${escapeHTML(itemName)}')"
                             >
-
                         `;
-
                     }
                     else {
-
                         imageHTML = `
-
                             <div
                                 style="
                                     height:260px;
@@ -1039,9 +985,7 @@
                             >
                                 📦
                             </div>
-
                         `;
-
                     }
 
 
@@ -1082,7 +1026,7 @@
 
                                 <span class="date">
 
-                                    Recently
+                                    ${formatItemDate(item)}
 
                                 </span>
 

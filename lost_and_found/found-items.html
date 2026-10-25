@@ -166,6 +166,199 @@
             document.getElementById("foundItemsGrid");
 
 
+        // =====================================================
+        // IMAGE MAP
+        // =====================================================
+
+        const imageMap = {
+            "mobile": "/lost_and_found/uploads/items/mobile.jpg",
+            "mobile phone": "/lost_and_found/uploads/items/mobile.jpg",
+            "phone": "/lost_and_found/uploads/items/mobile.jpg",
+            "smartphone": "/lost_and_found/uploads/items/mobile.jpg",
+            "iphone": "/lost_and_found/uploads/items/mobile.jpg",
+            "mobile cover": "/lost_and_found/uploads/items/mobilecover.jpg",
+            "phone cover": "/lost_and_found/uploads/items/mobilecover.jpg",
+            "black wallet": "/lost_and_found/uploads/items/blackwallet.jpg",
+            "wallet": "/lost_and_found/uploads/items/blackwallet.jpg",
+            "purse": "/lost_and_found/uploads/items/blackwallet.jpg",
+            "black bag": "/lost_and_found/uploads/items/blackbag.jpg",
+            "blackbag": "/lost_and_found/uploads/items/blackbag.jpg",
+            "bag": "/lost_and_found/uploads/items/blackbag.jpg",
+            "backpack": "/lost_and_found/uploads/items/blackbag.jpg",
+            "black backpack": "/lost_and_found/uploads/items/blackbag.jpg",
+            "pouch": "/lost_and_found/uploads/items/pouch.jpg",
+            "pencil pouch": "/lost_and_found/uploads/items/pouch.jpg",
+            "stationery pouch": "/lost_and_found/uploads/items/pouch.jpg",
+            "college id card": "/lost_and_found/uploads/items/collegeidcard.jpg",
+            "college id": "/lost_and_found/uploads/items/collegeidcard.jpg",
+            "id card": "/lost_and_found/uploads/items/collegeidcard.jpg",
+            "identity card": "/lost_and_found/uploads/items/collegeidcard.jpg",
+            "keychain": "/lost_and_found/uploads/items/keychain.jpg",
+            "key chain": "/lost_and_found/uploads/items/keychain.jpg",
+            "keys": "/lost_and_found/uploads/items/keychain.jpg",
+            "umbrella": "/lost_and_found/uploads/items/umbrella.jpg",
+            "laptop charger": "/lost_and_found/uploads/items/laptopcharger.jpg",
+            "laptopcharger": "/lost_and_found/uploads/items/laptopcharger.jpg",
+            "charger": "/lost_and_found/uploads/items/laptopcharger.jpg",
+            "notebook": "/lost_and_found/uploads/items/notebook.jpg",
+            "book": "/lost_and_found/uploads/items/notebook.jpg",
+            "register": "/lost_and_found/uploads/items/notebook.jpg",
+            "notes": "/lost_and_found/uploads/items/notebook.jpg",
+            "earphones": "/lost_and_found/uploads/items/earphones.jpg",
+            "earphone": "/lost_and_found/uploads/items/earphones.jpg",
+            "airpods": "/lost_and_found/uploads/items/earphones.jpg",
+            "earbuds": "/lost_and_found/uploads/items/earphones.jpg",
+            "earbuds case": "/lost_and_found/uploads/items/earphones.jpg",
+            "usb drive": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "usb": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "usbdrive": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "pendrive": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "pen drive": "/lost_and_found/uploads/items/usbdrive.jpg",
+            "scientific calculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "scientificcalculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "calculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "casio scientific calculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "casio calculator": "/lost_and_found/uploads/items/scientific%20calculator.jpg",
+            "water bottle": "/lost_and_found/uploads/items/waterbottle.jpg",
+            "waterbottle": "/lost_and_found/uploads/items/waterbottle.jpg",
+            "bottle": "/lost_and_found/uploads/items/waterbottle.jpg",
+            "blue water bottle": "/lost_and_found/uploads/items/waterbottle.jpg",
+            "geometry box": "/lost_and_found/uploads/items/geometrybox.jpg",
+            "geometrybox": "/lost_and_found/uploads/items/geometrybox.jpg",
+            "spectacles": "/lost_and_found/uploads/items/spectacles.jpg",
+            "spectacle": "/lost_and_found/uploads/items/spectacles.jpg",
+            "glasses": "/lost_and_found/uploads/items/spectacles.jpg",
+            "specs": "/lost_and_found/uploads/items/spectacles.jpg",
+            "spectacles case": "/lost_and_found/uploads/items/spectacles.jpg",
+            "chem": "/lost_and_found/uploads/items/chem.jpg",
+            "chemistry": "/lost_and_found/uploads/items/chem.jpg",
+            "chemistry book": "/lost_and_found/uploads/items/chem.jpg",
+            "chemistry lab journal": "/lost_and_found/uploads/items/chem.jpg",
+            "lab file": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "labfile": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "lab": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "yellow file": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "yellowfile": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "file": "/lost_and_found/uploads/items/yellowfile.jpg",
+            "ipad": "/lost_and_found/uploads/items/ipad.jpg",
+            "i pad": "/lost_and_found/uploads/items/ipad.jpg",
+            "apple ipad": "/lost_and_found/uploads/items/ipad.jpg",
+            "tablet": "/lost_and_found/uploads/items/ipad.jpg"
+        };
+
+
+        // =====================================================
+        // TIMESTAMP & DATE HELPERS
+        // =====================================================
+
+        function getItemTimestamp(item) {
+            if (item.created_at) {
+                const t = new Date(item.created_at).getTime();
+                if (!isNaN(t) && t > 0) return t;
+            }
+            if (item.image) {
+                const match = String(item.image).match(/_(\d{10,13})/);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    return match[1].length === 10 ? num * 1000 : num;
+                }
+            }
+            return 1790000000000 + ((Number(item.serial_number) || 0) * 3600000);
+        }
+
+        function formatItemDate(item) {
+            const ts = getItemTimestamp(item);
+            if (!ts) return "Recently";
+            const date = new Date(ts);
+            const now = new Date();
+            const diffHours = Math.round((now - date) / (1000 * 60 * 60));
+            if (diffHours >= 0 && diffHours < 24) return "Today";
+            if (diffHours >= 24 && diffHours < 48) return "Yesterday";
+            return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        }
+
+
+        // =====================================================
+        // RESOLVE ITEM IMAGE URL
+        // =====================================================
+
+        function getDictionaryFallback(itemName) {
+            if (!itemName) return "";
+            const key = String(itemName).trim().toLowerCase();
+            if (imageMap[key]) return imageMap[key];
+            const norm = key.replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+            if (imageMap[norm]) return imageMap[norm];
+            for (const [mapKey, path] of Object.entries(imageMap)) {
+                if ((key.length > 2 && mapKey.includes(key)) || (mapKey.length > 2 && key.includes(mapKey))) {
+                    return path;
+                }
+            }
+            return "";
+        }
+
+        function resolveItemImageUrl(image, itemName) {
+            let imageValue = image ? String(image).trim() : "";
+
+            if (imageValue.startsWith("data:") || imageValue.startsWith("http://") || imageValue.startsWith("https://")) {
+                return imageValue;
+            }
+
+            if (imageValue !== "") {
+                const cleanPath = imageValue.replace(/\\/g, "/").replace(/^\/+/, "");
+                if (cleanPath.startsWith("lost_and_found/")) {
+                    return "/" + cleanPath;
+                }
+                if (cleanPath.startsWith("uploads/")) {
+                    return "/lost_and_found/" + cleanPath;
+                }
+                return "/lost_and_found/uploads/items/" + cleanPath.split("/").pop();
+            }
+
+            return getDictionaryFallback(itemName);
+        }
+
+        function handleItemImageError(imgEl, itemName) {
+            if (imgEl.getAttribute("data-fallback-tried") === "backend") {
+                imgEl.setAttribute("data-fallback-tried", "dict");
+                const dictFallback = getDictionaryFallback(itemName);
+                if (dictFallback && !imgEl.src.includes(dictFallback)) {
+                    imgEl.src = dictFallback;
+                    return;
+                }
+                showFallbackIcon(imgEl);
+                return;
+            }
+
+            if (!imgEl.getAttribute("data-fallback-tried")) {
+                imgEl.setAttribute("data-fallback-tried", "backend");
+                const filename = (imgEl.src || "").split("/").pop().split("?")[0];
+                if (filename && !imgEl.src.includes("campus-connect-4n2t.onrender.com")) {
+                    imgEl.src = "https://campus-connect-4n2t.onrender.com/uploads/items/" + filename;
+                    return;
+                }
+                const dictFallback = getDictionaryFallback(itemName);
+                if (dictFallback && !imgEl.src.includes(dictFallback)) {
+                    imgEl.setAttribute("data-fallback-tried", "dict");
+                    imgEl.src = dictFallback;
+                    return;
+                }
+            }
+
+            showFallbackIcon(imgEl);
+        }
+
+        function showFallbackIcon(imgEl) {
+            imgEl.style.display = "none";
+            const parent = imgEl.parentElement;
+            if (parent && !parent.querySelector(".image-fallback")) {
+                const fallback = document.createElement("span");
+                fallback.className = "image-fallback";
+                fallback.style.fontSize = "60px";
+                fallback.innerText = "📦";
+                parent.appendChild(fallback);
+            }
+        }
+
 
         // =====================================================
         // LOAD FOUND ITEMS FROM EXPRESS + MYSQL
@@ -178,62 +371,29 @@
                 const response =
                     await fetch(API_URL);
 
-
                 if (!response.ok) {
-
-                    throw new Error(
-                        "Server returned HTTP " + response.status
-                    );
-
+                    throw new Error("Server returned HTTP " + response.status);
                 }
-
 
                 const items =
                     await response.json();
 
-
-                console.log(
-                    "Found items received from Express:",
-                    items
-                );
-
-
-                // Remove loading message
+                console.log("Found items received from Express:", items);
 
                 foundItemsGrid.innerHTML = "";
 
-
-
-                // =================================================
-                // NO FOUND ITEMS
-                // =================================================
-
-                if (
-                    !Array.isArray(items) ||
-                    items.length === 0
-                ) {
-
+                if (!Array.isArray(items) || items.length === 0) {
                     foundItemsGrid.innerHTML = `
-
                         <div class="no-items">
-
-                            <h3>
-                                No found items reported yet.
-                            </h3>
-
-                            <p>
-                                Be the first to report a found item.
-                            </p>
-
+                            <h3>No found items reported yet.</h3>
+                            <p>Be the first to report a found item.</p>
                         </div>
-
                     `;
-
                     return;
-
                 }
 
-
+                // Deterministic sort: newest first
+                items.sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
 
                 // =================================================
                 // CREATE CARDS FROM DATABASE
@@ -241,177 +401,68 @@
 
                 items.forEach(function(item) {
 
+                    const itemName = item.item_name || "Unknown Item";
+                    const description = item.description || "No description provided.";
+                    const location = item.location || "Location not specified";
+                    const status = item.status || "found";
+                    const imageUrl = resolveItemImageUrl(item.image, itemName);
 
-                    const itemName =
-                        item.item_name || "Unknown Item";
-
-
-                    const description =
-                        item.description ||
-                        "No description provided.";
-
-
-                    const location =
-                        item.location ||
-                        "Location not specified";
-
-
-                    const status =
-                        item.status || "found";
-
-
-
-                    // =================================================
-                    // IMAGE
-                    // =================================================
-
-                    let imageHTML = `
-
-                        <span style="font-size: 60px;">
-                            📦
-                        </span>
-
-                    `;
-
-
-                    if (
-                        item.image &&
-                        String(item.image).trim() !== ""
-                    ) {
-
-                        const rawImagePath = String(item.image).trim();
-                        let imagePath = rawImagePath;
-                        if (
-                            !rawImagePath.startsWith("http://") &&
-                            !rawImagePath.startsWith("https://") &&
-                            !rawImagePath.startsWith("data:")
-                        ) {
-                            const clean = rawImagePath.replace(/\\/g, "/").replace(/^\/+/, "");
-                            if (clean.startsWith("lost_and_found/")) {
-                                imagePath = "/" + clean;
-                            } else if (clean.startsWith("uploads/")) {
-                                imagePath = "/lost_and_found/" + clean;
-                            } else {
-                                imagePath = "/lost_and_found/uploads/items/" + clean;
-                            }
-                        }
-
-
+                    let imageHTML;
+                    if (imageUrl) {
                         imageHTML = `
-
                             <img
-                                src="${escapeHTML(imagePath)}"
+                                src="${escapeHTML(imageUrl)}"
                                 alt="${escapeHTML(itemName)}"
                                 class="lost-item-image"
-                                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                                onerror="handleItemImageError(this, '${escapeHTML(itemName)}')"
                             >
-
-                            <span
-                                style="
-                                    display:none;
-                                    font-size:60px;
-                                "
-                            >
-                                📦
-                            </span>
-
                         `;
-
+                    } else {
+                        imageHTML = `
+                            <span style="font-size: 60px;">📦</span>
+                        `;
                     }
 
-
-
-                    // =================================================
-                    // CREATE CARD
-                    // =================================================
-
-                    const card =
-                        document.createElement("div");
-
-
-                    card.className =
-                        "item-card";
-
-
-                    card.setAttribute(
-                        "data-status",
-                        status.toLowerCase()
-                    );
-
+                    const card = document.createElement("div");
+                    card.className = "item-card";
+                    card.setAttribute("data-status", status.toLowerCase());
 
                     card.innerHTML = `
-
                         <!-- ================= IMAGE ================= -->
-
                         <div class="item-image orange-image">
-
                             ${imageHTML}
-
                         </div>
-
-
 
                         <!-- ================= CONTENT ================= -->
-
                         <div class="item-content">
-
-
                             <div class="item-top">
-
                                 <span class="status found">
-
                                     FOUND
-
                                 </span>
-
-
                                 <span class="date">
-
-                                    Recently
-
+                                    ${formatItemDate(item)}
                                 </span>
-
                             </div>
-
-
 
                             <h3>
-
                                 ${escapeHTML(itemName)}
-
                             </h3>
 
-
-
                             <p>
-
                                 ${escapeHTML(description)}
-
                             </p>
 
-
-
                             <div class="item-location">
-
-                                📍
-
-                                ${escapeHTML(location)}
-
+                                📍 ${escapeHTML(location)}
                             </div>
-
-
                         </div>
-
                     `;
-
 
                     foundItemsGrid.appendChild(card);
 
                 });
 
-
             }
-
 
             catch (error) {
 
@@ -420,21 +471,11 @@
                     error
                 );
 
-
                 foundItemsGrid.innerHTML = `
-
                     <div class="no-items">
-
-                        <h3>
-                            Could not load found items.
-                        </h3>
-
-                        <p>
-                            The Lost & Found service is currently unavailable. Please try again in a moment.
-                        </p>
-
+                        <h3>Could not load found items.</h3>
+                        <p>The Lost & Found service is currently unavailable. Please try again in a moment.</p>
                     </div>
-
                 `;
 
             }

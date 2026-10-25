@@ -834,46 +834,107 @@ textarea {
 
 .report-form {
     width: 100%;
-
     max-width: 550px;
-
     margin-left: auto;
+    background: #ffffff;
+    padding: 32px;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
 
+#reportForm {
     display: flex;
-
     flex-direction: column;
-
-    gap: 15px;
+    gap: 16px;
+    width: 100%;
 }
 
 .report-form input,
 .report-form select,
-.report-form textarea {
+.report-form textarea,
+#reportForm input,
+#reportForm select,
+#reportForm textarea {
     width: 100%;
-
-    padding: 16px 18px;
-
+    padding: 14px 16px;
     border: 1px solid #d8dee8;
-
     border-radius: 9px;
-
-    font-size: 16px;
-
+    font-size: 15px;
     outline: none;
-
     background: #ffffff;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .report-form input:focus,
 .report-form select:focus,
-.report-form textarea:focus {
+.report-form textarea:focus,
+#reportForm input:focus,
+#reportForm select:focus,
+#reportForm textarea:focus {
     border-color: var(--dark-orange);
+    box-shadow: 0 0 0 3px rgba(198, 83, 0, 0.15);
 }
 
-.report-form textarea {
-    min-height: 140px;
-
+.report-form textarea,
+#reportForm textarea {
+    min-height: 120px;
     resize: vertical;
+}
+
+.report-upload-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.report-upload-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #14213d;
+}
+
+.report-upload-group input[type="file"] {
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 9px;
+    cursor: pointer;
+}
+
+.report-upload-group small {
+    color: #71819a;
+    font-size: 13px;
+}
+
+#reportForm button[type="submit"],
+#submitReport {
+    width: 100%;
+    margin-top: 8px;
+    padding: 16px 24px;
+    background: #17233b;
+    color: #ffffff;
+    border: none;
+    border-radius: 9px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+    display: block;
+}
+
+#reportForm button[type="submit"]:hover,
+#submitReport:hover {
+    background: var(--dark-orange);
+}
+
+#reportForm button[type="submit"]:disabled,
+#submitReport:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 
@@ -1295,9 +1356,23 @@ footer {
 
         justify-content: center;
 
+        align-items: center;
+
         flex-wrap: wrap;
 
-        gap: 15px;
+        gap: 12px;
+    }
+
+    .portal-nav-link {
+        margin-right: 0;
+    }
+
+    .navbar .cc-theme-toggle {
+        margin-left: 0;
+    }
+
+    .report-form {
+        padding: 20px;
     }
 
     .login-btn {
@@ -1635,15 +1710,45 @@ body.dark-mode .report-form {
 
 body.dark-mode .report-form input,
 body.dark-mode .report-form select,
-body.dark-mode .report-form textarea {
+body.dark-mode .report-form textarea,
+body.dark-mode #reportForm input,
+body.dark-mode #reportForm select,
+body.dark-mode #reportForm textarea {
     background: #0f1626;
     border-color: #23304c;
     color: #f8fafc;
 }
 
 body.dark-mode .report-form input::placeholder,
-body.dark-mode .report-form textarea::placeholder {
+body.dark-mode .report-form textarea::placeholder,
+body.dark-mode #reportForm input::placeholder,
+body.dark-mode #reportForm textarea::placeholder {
     color: #64748b;
+}
+
+body.dark-mode .report-upload-group label {
+    color: #f8fafc;
+}
+
+body.dark-mode .report-upload-group small {
+    color: #94a3b8;
+}
+
+body.dark-mode .report-upload-group input[type="file"] {
+    background: #0f1626;
+    border-color: #23304c;
+    color: #94a3b8;
+}
+
+body.dark-mode #reportForm button[type="submit"],
+body.dark-mode #submitReport {
+    background: #ea580c;
+    color: #ffffff;
+}
+
+body.dark-mode #reportForm button[type="submit"]:hover,
+body.dark-mode #submitReport:hover {
+    background: #c2410c;
 }
 
 body.dark-mode footer#contact,

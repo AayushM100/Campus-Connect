@@ -398,7 +398,54 @@ const imageMap = {
         "/lost_and_found/uploads/items/yellowfile.jpg",
 
     "file":
-        "/lost_and_found/uploads/items/yellowfile.jpg"
+        "/lost_and_found/uploads/items/yellowfile.jpg",
+
+    // =================================================
+    // IPAD / TABLET
+    // =================================================
+
+    "ipad":
+        "/lost_and_found/uploads/items/ipad.jpg",
+
+    "i pad":
+        "/lost_and_found/uploads/items/ipad.jpg",
+
+    "apple ipad":
+        "/lost_and_found/uploads/items/ipad.jpg",
+
+    "tablet":
+        "/lost_and_found/uploads/items/ipad.jpg",
+
+    // =================================================
+    // ACCESSORIES & MISC
+    // =================================================
+
+    "spectacles case":
+        "/lost_and_found/uploads/items/spectacles.jpg",
+
+    "specs":
+        "/lost_and_found/uploads/items/spectacles.jpg",
+
+    "blue water bottle":
+        "/lost_and_found/uploads/items/waterbottle.jpg",
+
+    "backpack":
+        "/lost_and_found/uploads/items/blackbag.jpg",
+
+    "black backpack":
+        "/lost_and_found/uploads/items/blackbag.jpg",
+
+    "earbuds":
+        "/lost_and_found/uploads/items/earphones.jpg",
+
+    "earbuds case":
+        "/lost_and_found/uploads/items/earphones.jpg",
+
+    "chemistry lab journal":
+        "/lost_and_found/uploads/items/chem.jpg",
+
+    "macbook":
+        "/lost_and_found/uploads/items/laptopcharger.jpg"
 
 };
 
@@ -409,15 +456,13 @@ const imageMap = {
 
 function getCorrectImage(item) {
 
-    const itemKey =
+    const itemName =
         item.item_name
-            ? String(
-                item.item_name
-            )
-                .trim()
-                .toLowerCase()
+            ? String(item.item_name).trim()
             : "";
 
+    const itemKey =
+        itemName.toLowerCase();
 
     // =================================================
     // FIRST: CHECK DATABASE IMAGE
@@ -425,68 +470,43 @@ function getCorrectImage(item) {
 
     if (
         item.image &&
-        String(
-            item.image
-        ).trim() !== ""
+        String(item.image).trim() !== ""
     ) {
 
         const databaseImage =
-            String(
-                item.image
-            ).trim();
-
+            String(item.image).trim();
 
         // -------------------------------------------------
         // Data URL
         // -------------------------------------------------
 
-        if (
-            databaseImage.startsWith(
-                "data:"
-            )
-        ) {
-
+        if (databaseImage.startsWith("data:")) {
             return databaseImage;
-
         }
-
 
         // -------------------------------------------------
         // External URL
         // -------------------------------------------------
 
         if (
-            databaseImage.startsWith(
-                "http://"
-            ) ||
-            databaseImage.startsWith(
-                "https://"
-            )
+            databaseImage.startsWith("http://") ||
+            databaseImage.startsWith("https://")
         ) {
-
             return databaseImage;
-
         }
 
-
         // -------------------------------------------------
-        // Check local file
+        // Check local disk file
         // -------------------------------------------------
 
         const cleanPath =
-            databaseImage.replace(
-                /^\/+/,
-                ""
-            );
+            databaseImage.replace(/\\/g, "/").replace(/^\/+/, "");
 
+        const baseFilename =
+            path.basename(cleanPath);
 
         const actualFilePath =
-            path.join(
-                uploadFolder,
-                path.basename(
-                    cleanPath
-                )
-            );
+            path.join(uploadFolder, baseFilename);
 
         const frontendFilePath =
             path.join(
@@ -496,24 +516,42 @@ function getCorrectImage(item) {
                 "lost_and_found",
                 "uploads",
                 "items",
-                path.basename(
-                    cleanPath
-                )
+                baseFilename
             );
 
         if (
-            fs.existsSync(
-                actualFilePath
-            ) ||
-            fs.existsSync(
-                frontendFilePath
-            ) ||
-            cleanPath.includes("/") ||
-            /\.(jpg|jpeg|png|gif|webp)$/i.test(cleanPath)
+            fs.existsSync(actualFilePath) ||
+            fs.existsSync(frontendFilePath)
         ) {
+            if (cleanPath.startsWith("lost_and_found/")) {
+                return "/" + cleanPath;
+            }
+            return "/lost_and_found/uploads/items/" + baseFilename;
+        }
 
-            return databaseImage;
+        // If file with timestamp doesn't exist, check stripped base name
+        // e.g. waterbottle_1791397261612.jpg -> waterbottle.jpg
+        const stripped =
+            baseFilename.replace(/_\d{10,14}(\.[a-zA-Z0-9]+)$/, "$1");
 
+        if (stripped !== baseFilename) {
+            const strippedActual = path.join(uploadFolder, stripped);
+            const strippedFrontend = path.join(
+                __dirname,
+                "..",
+                "..",
+                "lost_and_found",
+                "uploads",
+                "items",
+                stripped
+            );
+
+            if (
+                fs.existsSync(strippedActual) ||
+                fs.existsSync(strippedFrontend)
+            ) {
+                return "/lost_and_found/uploads/items/" + stripped;
+            }
         }
 
     }
@@ -523,12 +561,8 @@ function getCorrectImage(item) {
     // SECOND: USE IMAGE MAP
     // =================================================
 
-    if (
-        imageMap[itemKey]
-    ) {
-
+    if (imageMap[itemKey]) {
         return imageMap[itemKey];
-
     }
 
 
@@ -538,31 +572,113 @@ function getCorrectImage(item) {
 
     const normalizedKey =
         itemKey
-            .replace(
-                /[_-]+/g,
-                " "
-            )
-            .replace(
-                /\s+/g,
-                " "
-            )
+            .replace(/[^a-z0-9]/g, " ")
+            .replace(/\s+/g, " ")
             .trim();
 
-
-    if (
-        imageMap[normalizedKey]
-    ) {
-
+    if (imageMap[normalizedKey]) {
         return imageMap[normalizedKey];
+    }
 
+    // Partial word match in imageMap
+    for (const [mapKey, imgPath] of Object.entries(imageMap)) {
+        if (
+            (itemKey.length > 2 && mapKey.includes(itemKey)) ||
+            (mapKey.length > 2 && itemKey.includes(mapKey))
+        ) {
+            return imgPath;
+        }
     }
 
 
     // =================================================
-    // NO IMAGE FOUND
+    // FOURTH: FALLBACK PATH IF DATABASE IMAGE PROVIDED
     // =================================================
 
-    return item.image || null;
+    if (item.image && String(item.image).trim() !== "") {
+        const clean = String(item.image).trim().replace(/\\/g, "/").replace(/^\/+/, "");
+        if (clean.startsWith("lost_and_found/")) {
+            return "/" + clean;
+        }
+        if (clean.startsWith("uploads/")) {
+            return "/lost_and_found/" + clean;
+        }
+        return "/lost_and_found/uploads/items/" + path.basename(clean);
+    }
+
+    return null;
+
+}
+
+
+// =====================================================
+// TIMESTAMP & RECENCY HELPER
+// =====================================================
+
+function getItemTimestamp(item) {
+
+    // 1. If created_at is valid
+    if (item.created_at) {
+        const parsed = new Date(item.created_at).getTime();
+        if (!isNaN(parsed) && parsed > 0) {
+            return parsed;
+        }
+    }
+
+    // 2. Extract timestamp from image filename: e.g. ipad_1792908368686.jpg
+    if (item.image) {
+        const match = String(item.image).match(/_(\d{10,13})/);
+        if (match) {
+            const num = parseInt(match[1], 10);
+            return match[1].length === 10 ? num * 1000 : num;
+        }
+    }
+
+    // 3. Fallback deterministically by serial_number
+    const serial = Number(item.serial_number) || 0;
+    return 1790000000000 + (serial * 3600000);
+
+}
+
+
+// =====================================================
+// ENSURE TIMESTAMP COLUMN EXISTS IN DATABASE
+// =====================================================
+
+let timestampSupportChecked = false;
+
+function ensureTimestampSupport(db) {
+
+    if (!db || timestampSupportChecked) return;
+    timestampSupportChecked = true;
+
+    db.query(
+        "SHOW COLUMNS FROM `" + LF_DB + "`.`lost_items` LIKE 'created_at'",
+        function(err, rows) {
+            if (!err && (!rows || rows.length === 0)) {
+                db.query(
+                    "ALTER TABLE `" + LF_DB + "`.`lost_items` ADD COLUMN `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP",
+                    function(aErr) {
+                        if (!aErr) console.log("Added created_at to lost_items");
+                    }
+                );
+            }
+        }
+    );
+
+    db.query(
+        "SHOW COLUMNS FROM `" + LF_DB + "`.`found_items` LIKE 'created_at'",
+        function(err, rows) {
+            if (!err && (!rows || rows.length === 0)) {
+                db.query(
+                    "ALTER TABLE `" + LF_DB + "`.`found_items` ADD COLUMN `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP",
+                    function(aErr) {
+                        if (!aErr) console.log("Added created_at to found_items");
+                    }
+                );
+            }
+        }
+    );
 
 }
 
@@ -580,12 +696,14 @@ router.get(
 
 
 // =====================================================
-// GET LOST ITEMS
+// GET LOST ITEMS (NEWEST FIRST)
 // =====================================================
 
 router.get(
     "/lost",
     function(req, res) {
+
+        ensureTimestampSupport(req.db);
 
         const query = `
             SELECT
@@ -603,54 +721,34 @@ router.get(
             ORDER BY serial_number DESC
         `;
 
-
         req.db.query(
             query,
             function(error, results) {
 
                 if (error) {
-
-                    console.log(
-                        "Lost items error:",
-                        error
-                    );
-
-
+                    console.log("Lost items error:", error);
                     return res.status(500).json({
-
-                        error:
-                            "Could not fetch lost items",
-
-                        details:
-                            error.message
-
+                        error: "Could not fetch lost items",
+                        details: error.message
                     });
-
                 }
 
-
                 const itemsWithImages =
-                    results.map(
-                        function(item) {
+                    results.map(function(item) {
+                        const ts = getItemTimestamp(item);
+                        return {
+                            ...item,
+                            created_at: item.created_at || new Date(ts).toISOString(),
+                            image: getCorrectImage(item)
+                        };
+                    });
 
-                            return {
+                // Deterministic sort: newest first
+                itemsWithImages.sort(function(a, b) {
+                    return getItemTimestamp(b) - getItemTimestamp(a);
+                });
 
-                                ...item,
-
-                                image:
-                                    getCorrectImage(
-                                        item
-                                    )
-
-                            };
-
-                        }
-                    );
-
-
-                res.json(
-                    itemsWithImages
-                );
+                res.json(itemsWithImages);
 
             }
         );
@@ -660,12 +758,14 @@ router.get(
 
 
 // =====================================================
-// GET FOUND ITEMS
+// GET FOUND ITEMS (NEWEST FIRST)
 // =====================================================
 
 router.get(
     "/found",
     function(req, res) {
+
+        ensureTimestampSupport(req.db);
 
         const query = `
             SELECT
@@ -696,54 +796,34 @@ router.get(
             ORDER BY serial_number DESC
         `;
 
-
         req.db.query(
             query,
             function(error, results) {
 
                 if (error) {
-
-                    console.log(
-                        "Found items error:",
-                        error
-                    );
-
-
+                    console.log("Found items error:", error);
                     return res.status(500).json({
-
-                        error:
-                            "Could not fetch found items",
-
-                        details:
-                            error.message
-
+                        error: "Could not fetch found items",
+                        details: error.message
                     });
-
                 }
 
-
                 const itemsWithImages =
-                    results.map(
-                        function(item) {
+                    results.map(function(item) {
+                        const ts = getItemTimestamp(item);
+                        return {
+                            ...item,
+                            created_at: item.created_at || new Date(ts).toISOString(),
+                            image: getCorrectImage(item)
+                        };
+                    });
 
-                            return {
+                // Deterministic sort: newest first across both tables
+                itemsWithImages.sort(function(a, b) {
+                    return getItemTimestamp(b) - getItemTimestamp(a);
+                });
 
-                                ...item,
-
-                                image:
-                                    getCorrectImage(
-                                        item
-                                    )
-
-                            };
-
-                        }
-                    );
-
-
-                res.json(
-                    itemsWithImages
-                );
+                res.json(itemsWithImages);
 
             }
         );
@@ -1050,6 +1130,11 @@ router.post(
                 );
 
 
+                const resolvedImg = getCorrectImage({
+                    item_name: item_name,
+                    image: imagePath
+                });
+
                 res.status(201).json({
 
                     message:
@@ -1073,7 +1158,10 @@ router.post(
                             description,
 
                         image:
-                            imagePath
+                            resolvedImg || imagePath,
+
+                        created_at:
+                            new Date().toISOString()
 
                     }
 
