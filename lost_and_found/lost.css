@@ -941,7 +941,46 @@ body.dark-mode .view-all:hover {
     transform: scale(1.05);
 }
 
-/* Image fallback icon */
+/* Sleek Neutral Image Fallback Container */
+.image-fallback-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: var(--bg-surface-subtle);
+    padding: 24px;
+    text-align: center;
+}
+
+.fallback-icon-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-cosmic-violet);
+    box-shadow: 0 4px 14px rgba(13, 27, 42, 0.05);
+}
+
+body.dark-mode .fallback-icon-badge {
+    color: var(--color-horizon-blue);
+    background: #182B46;
+}
+
+.fallback-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.2px;
+}
+
+/* Image fallback icon legacy */
 .image-fallback,
 .item-image span {
     font-size: 54px;
@@ -1313,6 +1352,72 @@ body.dark-mode #reportForm textarea:focus {
     font-size: 12px;
 }
 
+/* Modern Upload Preview Card */
+.preview-container {
+    background: var(--bg-surface-subtle);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin-top: 10px;
+    margin-bottom: 12px;
+    display: none;
+}
+
+.preview-container.active {
+    display: block;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.preview-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+}
+
+.remove-image-btn {
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #E63946;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.remove-image-btn:hover {
+    background: rgba(230, 57, 70, 0.08);
+    border-color: #E63946;
+}
+
+.preview-media-wrapper {
+    width: 100%;
+    max-height: 200px;
+    overflow: hidden;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface);
+}
+
+.preview-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
 #submitReport,
 #reportForm button[type="submit"] {
     width: 100%;
@@ -1539,6 +1644,31 @@ body.dark-mode .status-pill-btn:hover {
 .browse-controls button:hover {
     background: #E66E00;
     transform: translateY(-1px);
+}
+
+.browse-controls .clear-filters-btn {
+    padding: 14px 20px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface-subtle);
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: none;
+    transition: all var(--transition-fast);
+}
+
+.browse-controls .clear-filters-btn:hover {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-color: var(--color-cosmic-violet);
+    transform: none;
+}
+
+body.dark-mode .browse-controls .clear-filters-btn:hover {
+    border-color: var(--color-horizon-blue);
+    color: var(--text-primary);
 }
 
 /* Empty State */
