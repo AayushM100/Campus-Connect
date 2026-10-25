@@ -451,6 +451,60 @@ const imageMap = {
 
 
 // =====================================================
+// VERCEL PRODUCTION STATIC ASSET LIST
+// =====================================================
+
+const vercelStaticImages = new Set([
+    "1789640439_6aabbef7d4a29.jpg",
+    "1789640524_6aabbf4c4f2d8.jpg",
+    "blackbag.jpg",
+    "blackbag_1790798817313.jpg",
+    "blackwallet.jpg",
+    "chem.jpg",
+    "collegeidcard.jpg",
+    "earphones.jpg",
+    "geometrybox.jpg",
+    "keychain.jpg",
+    "laptopcharger.jpg",
+    "mobile.jpg",
+    "mobilecover.jpg",
+    "notebook.jpg",
+    "pouch.jpg",
+    "pouch_1790847147030.jpg",
+    "scientific calculator.jpg",
+    "spectacles.jpg",
+    "spectacles_1790846841290.jpg",
+    "umbrella.jpg",
+    "usbdrive.jpg",
+    "waterbottle.jpg",
+    "yellowfile.jpg"
+]);
+
+function getDiskFileDataUri(filename) {
+    if (!filename) return null;
+    const candidates = [
+        path.join(uploadFolder, filename),
+        path.join(__dirname, "..", "..", "lost_and_found", "uploads", "items", filename),
+        path.join(__dirname, "..", "uploads", "items", filename)
+    ];
+    for (const p of candidates) {
+        if (fs.existsSync(p)) {
+            try {
+                const stat = fs.statSync(p);
+                if (stat.size <= 2 * 1024 * 1024) {
+                    const ext = path.extname(filename).toLowerCase().replace(".", "");
+                    const mime = ext === "png" ? "image/png" : (ext === "webp" ? "image/webp" : "image/jpeg");
+                    const buf = fs.readFileSync(p);
+                    return "data:" + mime + ";base64," + buf.toString("base64");
+                }
+            } catch (e) {}
+        }
+    }
+    return null;
+}
+
+
+// =====================================================
 // GET CORRECT IMAGE
 // =====================================================
 
@@ -496,7 +550,7 @@ function getCorrectImage(item) {
         }
 
         // -------------------------------------------------
-        // Check local disk file
+        // Match with Vercel Production Static Bundle
         // -------------------------------------------------
 
         const cleanPath =
@@ -505,61 +559,42 @@ function getCorrectImage(item) {
         const baseFilename =
             path.basename(cleanPath);
 
-        const actualFilePath =
-            path.join(uploadFolder, baseFilename);
-
-        const frontendFilePath =
-            path.join(
-                __dirname,
-                "..",
-                "..",
-                "lost_and_found",
-                "uploads",
-                "items",
-                baseFilename
-            );
-
-        if (
-            fs.existsSync(actualFilePath) ||
-            fs.existsSync(frontendFilePath)
-        ) {
-            if (cleanPath.startsWith("lost_and_found/")) {
-                return "/" + cleanPath;
-            }
-            return "/lost_and_found/uploads/items/" + baseFilename;
-        }
-
-        // If file with timestamp doesn't exist, check stripped base name
-        // e.g. waterbottle_1791397261612.jpg -> waterbottle.jpg
         const stripped =
             baseFilename.replace(/_\d{10,14}(\.[a-zA-Z0-9]+)$/, "$1");
 
-        if (stripped !== baseFilename) {
-            const strippedActual = path.join(uploadFolder, stripped);
-            const strippedFrontend = path.join(
-                __dirname,
-                "..",
-                "..",
-                "lost_and_found",
-                "uploads",
-                "items",
-                stripped
-            );
+        // 1. If baseFilename exists on Vercel static bundle
+        if (vercelStaticImages.has(baseFilename)) {
+            return "/lost_and_found/uploads/items/" + baseFilename;
+        }
 
-            if (
-                fs.existsSync(strippedActual) ||
-                fs.existsSync(strippedFrontend)
-            ) {
-                return "/lost_and_found/uploads/items/" + stripped;
-            }
+        // 2. If stripped filename exists on Vercel static bundle (e.g. waterbottle.jpg)
+        if (vercelStaticImages.has(stripped)) {
+            return "/lost_and_found/uploads/items/" + stripped;
+        }
+
+        // 3. If file exists on Render disk (e.g. ipad.jpg, ipad_1792908368686.jpg)
+        const diskUri = getDiskFileDataUri(baseFilename) || getDiskFileDataUri(stripped);
+        if (diskUri) {
+            return diskUri;
+        }
+
+        // 4. If cleanPath is an existing Vercel path
+        if (cleanPath.startsWith("lost_and_found/uploads/items/")) {
+            const leaf = path.basename(cleanPath);
+            if (vercelStaticImages.has(leaf)) return "/" + cleanPath;
         }
 
     }
 
 
     // =================================================
-    // SECOND: USE IMAGE MAP
+    // SECOND: USE IMAGE MAP OR IPAD DATA URI
     // =================================================
+
+    if (itemKey.includes("ipad") || itemKey === "tablet") {
+        const ipadUri = getDiskFileDataUri("ipad.jpg");
+        if (ipadUri) return ipadUri;
+    }
 
     if (imageMap[itemKey]) {
         return imageMap[itemKey];
@@ -597,13 +632,12 @@ function getCorrectImage(item) {
 
     if (item.image && String(item.image).trim() !== "") {
         const clean = String(item.image).trim().replace(/\\/g, "/").replace(/^\/+/, "");
-        if (clean.startsWith("lost_and_found/")) {
-            return "/" + clean;
-        }
-        if (clean.startsWith("uploads/")) {
-            return "/lost_and_found/" + clean;
-        }
-        return "/lost_and_found/uploads/items/" + path.basename(clean);
+        const leaf = path.basename(clean);
+        const strippedLeaf = leaf.replace(/_\d{10,14}(\.[a-zA-Z0-9]+)$/, "$1");
+        if (vercelStaticImages.has(leaf)) return "/lost_and_found/uploads/items/" + leaf;
+        if (vercelStaticImages.has(strippedLeaf)) return "/lost_and_found/uploads/items/" + strippedLeaf;
+        if (clean.startsWith("lost_and_found/")) return "/" + clean;
+        return "/lost_and_found/uploads/items/" + leaf;
     }
 
     return null;
@@ -1019,13 +1053,16 @@ router.post(
                     req.file.buffer
                 );
 
+                const mimeType = req.file.mimetype || "image/jpeg";
                 imagePath =
-                    "uploads/items/" +
-                    uniqueName;
+                    "data:" +
+                    mimeType +
+                    ";base64," +
+                    req.file.buffer.toString("base64");
 
                 console.log(
-                    "Saved image to local disk:",
-                    imagePath
+                    "Saved image to local disk and generated data URI:",
+                    uniqueName
                 );
 
             }
