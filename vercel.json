@@ -2,12 +2,16 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://campus-connect-1-0q94.onrender.com/api/:path*"
+      "source": "/uploads/:path*",
+      "destination": "/lost_and_found/uploads/:path*"
     },
     {
-      "source": "/uploads/:path*",
-      "destination": "https://campus-connect-1-0q94.onrender.com/uploads/:path*"
+      "source": "/api/lost-found/:path*",
+      "destination": "https://campus-connect-4n2t.onrender.com/api/lost-found/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://campus-connect-1-0q94.onrender.com/api/:path*"
     },
     {
       "source": "/food-images/:path*",

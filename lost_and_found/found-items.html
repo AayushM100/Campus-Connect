@@ -280,10 +280,21 @@
                     ) {
 
                         const rawImagePath = String(item.image).trim();
-
-                        const imagePath = rawImagePath.startsWith("uploads/")
-                            ? "/uploads/" + rawImagePath.substring("uploads/".length)
-                            : rawImagePath;
+                        let imagePath = rawImagePath;
+                        if (
+                            !rawImagePath.startsWith("http://") &&
+                            !rawImagePath.startsWith("https://") &&
+                            !rawImagePath.startsWith("data:")
+                        ) {
+                            const clean = rawImagePath.replace(/\\/g, "/").replace(/^\/+/, "");
+                            if (clean.startsWith("lost_and_found/")) {
+                                imagePath = "/" + clean;
+                            } else if (clean.startsWith("uploads/")) {
+                                imagePath = "/lost_and_found/" + clean;
+                            } else {
+                                imagePath = "/lost_and_found/uploads/items/" + clean;
+                            }
+                        }
 
 
                         imageHTML = `

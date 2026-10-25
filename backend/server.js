@@ -12,6 +12,7 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const lostfoundRouter = require("./routes/lostfound");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,12 +23,25 @@ const DB = "campus_canteen";
 // ======================================================
 
 app.use(cors());
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+const frontendPath = path.join(__dirname, "..", "lost_and_found");
+const uploadsFolder = path.join(frontendPath, "uploads");
+const backendUploadsFolder = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(backendUploadsFolder)) {
+    fs.mkdirSync(backendUploadsFolder, { recursive: true });
+}
 
 app.use(
     "/food-images",
     express.static(path.join(__dirname, "food-images"))
 );
+app.use("/uploads", express.static(uploadsFolder));
+app.use("/uploads", express.static(backendUploadsFolder));
+app.use("/lost_and_found/uploads", express.static(uploadsFolder));
+app.use("/lost_and_found/uploads", express.static(backendUploadsFolder));
 
 // ======================================================
 // 2. MYSQL CONNECTION
@@ -58,6 +72,19 @@ const db = mysql.createPool(poolConfig);
 function query(sql, params = []) {
     return db.promise().query(sql, params);
 }
+
+// ======================================================
+// 3. LOST & FOUND ROUTER MOUNT
+// ======================================================
+
+app.use(
+    "/api/lost-found",
+    (req, res, next) => {
+        req.db = db;
+        next();
+    },
+    lostfoundRouter
+);
 
 function handleRouteError(message, res, err) {
     console.error(

@@ -6,7 +6,12 @@ const cloudinary = require("cloudinary").v2;
 
 const router = express.Router();
 
-const LF_DB = process.env.DB_NAME || "campusconnect";
+const LF_DB =
+    process.env.LOST_FOUND_DB ||
+    process.env.LF_DB ||
+    (process.env.DB_NAME && process.env.DB_NAME !== "campus_canteen"
+        ? process.env.DB_NAME
+        : "campusconnect");
 
 
 // =====================================================

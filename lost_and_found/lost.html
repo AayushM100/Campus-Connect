@@ -1027,53 +1027,19 @@
             // /lost_and_found/uploads/items/black_bag_123.jpg
             // -------------------------------------------------
 
-            if (
-                imageValue.startsWith(
-                    "uploads/"
-                ) ||
-                imageValue.startsWith(
-                    "uploads\\"
-                )
-            ) {
+            const cleanPath = imageValue
+                .replace(/\\/g, "/")
+                .replace(/^\/+/, "");
 
-                return (
-                    "/uploads/" +
-                    imageValue.replace(
-                        /\\/g,
-                        "/"
-                    )
-                );
-
+            if (cleanPath.startsWith("lost_and_found/")) {
+                return "/" + cleanPath;
             }
 
-
-            // -------------------------------------------------
-            // Already has lost_and_found path
-            // -------------------------------------------------
-
-            if (
-                imageValue.startsWith(
-                    "/lost_and_found/"
-                )
-            ) {
-
-                return imageValue;
-
+            if (cleanPath.startsWith("uploads/")) {
+                return "/lost_and_found/" + cleanPath;
             }
 
-
-            // -------------------------------------------------
-            // Any other relative path
-            // -------------------------------------------------
-
-            return (
-                "/lost_and_found/" +
-                imageValue.replace(
-                    /^\/+/,
-                    ""
-                )
-            );
-
+            return "/lost_and_found/uploads/items/" + cleanPath;
         }
 
 
