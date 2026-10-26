@@ -422,7 +422,7 @@
                         src="${escapeHTML(imageUrl)}"
                         alt="${escapeHTML(itemName)}"
                         class="lost-item-image"
-                        onerror="handleItemImageError(this, '${escapeHTML(itemName)}')"
+                        onerror="handleItemImageError(this, decodeURIComponent('${encodeURIComponent(itemName)}'))"
                     >
                 `;
             } else {
@@ -442,7 +442,7 @@
 
             const card = document.createElement("div");
             card.className = "item-card";
-            card.setAttribute("data-status", status.toLowerCase());
+            card.setAttribute("data-status", String(status).toLowerCase());
 
             card.innerHTML = `
                 <!-- ================= IMAGE ================= -->
