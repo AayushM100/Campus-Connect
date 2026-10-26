@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.sp
 import com.sahiljadhav.campusconnect.data.model.TrayItem
 import com.sahiljadhav.campusconnect.ui.common.CampusImage
 import com.sahiljadhav.campusconnect.ui.common.EmptyView
+import com.sahiljadhav.campusconnect.ui.components.CampusGlassButton
+import com.sahiljadhav.campusconnect.ui.components.GlassButtonVariant
 import com.sahiljadhav.campusconnect.ui.theme.AvailableGreen
 import com.sahiljadhav.campusconnect.ui.theme.BrandOrange
 
@@ -278,18 +280,15 @@ fun TrayContent(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Checkout Button
-        Button(
+        // Checkout Button (Liquid Glass Button)
+        CampusGlassButton(
             onClick = { showCheckoutDialog = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandOrange)
+            variant = GlassButtonVariant.BRAND_ORANGE,
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 text = "Proceed with Order ($subtotalFormatted)",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
             )
         }
 

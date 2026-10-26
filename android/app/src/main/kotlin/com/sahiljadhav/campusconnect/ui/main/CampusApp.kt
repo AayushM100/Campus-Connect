@@ -18,7 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sahiljadhav.campusconnect.ui.canteen.CanteenScreen
 import com.sahiljadhav.campusconnect.ui.canteen.CanteenViewModel
 import com.sahiljadhav.campusconnect.ui.canteen.components.TrayContent
-import com.sahiljadhav.campusconnect.ui.common.CampusBottomNav
+import com.sahiljadhav.campusconnect.ui.components.CampusDock
 import com.sahiljadhav.campusconnect.ui.common.CampusTab
 import com.sahiljadhav.campusconnect.ui.common.CampusTopBar
 import com.sahiljadhav.campusconnect.ui.home.HomeScreen
@@ -73,7 +73,7 @@ fun CampusApp(
             )
         },
         bottomBar = {
-            CampusBottomNav(
+            CampusDock(
                 selectedTab = activeTab,
                 onTabSelected = { activeTab = it },
                 trayCount = trayItemCount

@@ -57,6 +57,9 @@ import com.sahiljadhav.campusconnect.R
 import com.sahiljadhav.campusconnect.data.model.MenuItem
 import com.sahiljadhav.campusconnect.ui.common.CampusImage
 import com.sahiljadhav.campusconnect.ui.common.CampusTab
+import com.sahiljadhav.campusconnect.ui.components.CampusGlassButton
+import com.sahiljadhav.campusconnect.ui.components.GlassButtonVariant
+import com.sahiljadhav.campusconnect.ui.components.TypewriterText
 import com.sahiljadhav.campusconnect.ui.theme.AvailableGreen
 import com.sahiljadhav.campusconnect.ui.theme.BrandAmber
 import com.sahiljadhav.campusconnect.ui.theme.BrandOrange
@@ -107,11 +110,14 @@ fun HomeScreen(
                             )
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
+                        TypewriterText(
                             text = "Your college essentials in one pocket app",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
+                                color = Color.White.copy(alpha = 0.95f),
+                                fontWeight = FontWeight.Medium
+                            ),
+                            charDelayMs = 28L,
+                            cursorColor = Color.White
                         )
                     }
 
@@ -136,50 +142,40 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Surface(
+                    CampusGlassButton(
                         onClick = { onNavigateTab(CampusTab.CANTEEN) },
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.White,
+                        variant = GlassButtonVariant.TRANSLUCENT_SURFACE,
+                        shape = RoundedCornerShape(14.dp),
+                        minHeight = 44.dp,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text("🍔", fontSize = 16.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "View Menu",
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandOrangeDark
-                                )
+                        Text("🍔", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "View Menu",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
                             )
-                        }
+                        )
                     }
 
-                    Surface(
+                    CampusGlassButton(
                         onClick = { onNavigateTab(CampusTab.LOST_FOUND) },
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.White.copy(alpha = 0.2f),
+                        variant = GlassButtonVariant.TRANSLUCENT_SURFACE,
+                        shape = RoundedCornerShape(14.dp),
+                        minHeight = 44.dp,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text("🔍", fontSize = 16.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Lost & Found",
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
+                        Text("🔍", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Lost & Found",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
                             )
-                        }
+                        )
                     }
                 }
             }

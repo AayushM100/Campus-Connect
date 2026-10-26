@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sahiljadhav.campusconnect.data.model.MenuItem
 import com.sahiljadhav.campusconnect.ui.common.CampusImage
+import com.sahiljadhav.campusconnect.ui.components.CampusGlassButton
+import com.sahiljadhav.campusconnect.ui.components.GlassButtonVariant
 import com.sahiljadhav.campusconnect.ui.theme.AvailableGreen
 import com.sahiljadhav.campusconnect.ui.theme.BrandOrange
 import com.sahiljadhav.campusconnect.ui.theme.UnavailableRed
@@ -272,26 +274,23 @@ fun FoodDetailSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Action Button
+            // Action Button (Liquid Glass Button)
             if (item.isItemAvailable) {
-                Button(
+                val totalForSelected = item.priceValue * selectedQuantity
+                val totalStr = if (totalForSelected % 1.0 == 0.0) "₹${totalForSelected.toInt()}" else "₹${String.format("%.2f", totalForSelected)}"
+                CampusGlassButton(
                     onClick = {
                         onAddToCart(selectedQuantity)
                         onDismiss()
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandOrange)
+                    variant = GlassButtonVariant.BRAND_ORANGE,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(imageVector = Icons.Rounded.ShoppingBag, contentDescription = null)
+                    Icon(imageVector = Icons.Rounded.ShoppingBag, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
-                    val totalForSelected = item.priceValue * selectedQuantity
-                    val totalStr = if (totalForSelected % 1.0 == 0.0) "₹${totalForSelected.toInt()}" else "₹${String.format("%.2f", totalForSelected)}"
                     Text(
                         text = if (currentQuantityInTray > 0) "Update Tray • $totalStr" else "Add to Tray • $totalStr",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
                     )
                 }
             } else {
