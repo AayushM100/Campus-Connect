@@ -3,6 +3,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const cloudinary = require("cloudinary").v2;
+const { verifyFirebaseToken, optionalAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -729,6 +730,34 @@ function ensureTimestampSupport(db) {
         }
     );
 
+    db.query(
+        "SHOW COLUMNS FROM `" + LF_DB + "`.`lost_items` LIKE 'user_uid'",
+        function(err, rows) {
+            if (!err && (!rows || rows.length === 0)) {
+                db.query(
+                    "ALTER TABLE `" + LF_DB + "`.`lost_items` ADD COLUMN `user_uid` VARCHAR(128) NULL DEFAULT NULL",
+                    function(aErr) {
+                        if (!aErr) console.log("Added user_uid to lost_items");
+                    }
+                );
+            }
+        }
+    );
+
+    db.query(
+        "SHOW COLUMNS FROM `" + LF_DB + "`.`found_items` LIKE 'user_uid'",
+        function(err, rows) {
+            if (!err && (!rows || rows.length === 0)) {
+                db.query(
+                    "ALTER TABLE `" + LF_DB + "`.`found_items` ADD COLUMN `user_uid` VARCHAR(128) NULL DEFAULT NULL",
+                    function(aErr) {
+                        if (!aErr) console.log("Added user_uid to found_items");
+                    }
+                );
+            }
+        }
+    );
+
 }
 
 
@@ -757,6 +786,7 @@ router.get(
         const query = `
             SELECT
                 serial_number,
+                user_uid,
                 roll_number,
                 item_name,
                 location,
@@ -819,6 +849,7 @@ router.get(
         const query = `
             SELECT
                 serial_number,
+                user_uid,
                 roll_number,
                 item_name,
                 location,
@@ -832,6 +863,7 @@ router.get(
             UNION ALL
             SELECT
                 serial_number,
+                user_uid,
                 roll_number,
                 item_name,
                 location,
@@ -896,6 +928,7 @@ router.get(
 
 router.post(
     "/",
+    verifyFirebaseToken,
     upload.single("image"),
     async function(req, res) {
 
@@ -1090,6 +1123,8 @@ router.post(
                 ? "found_items"
                 : "lost_items";
 
+        const user_uid = req.user ? req.user.uid : null;
+
         const query = `
             INSERT INTO \`${LF_DB}\`.\`${targetTable}\`
             (
@@ -1100,9 +1135,10 @@ router.post(
                 status,
                 contact_number,
                 description,
-                image
+                image,
+                user_uid
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
 
@@ -1122,7 +1158,9 @@ router.post(
 
             description,
 
-            imagePath
+            imagePath,
+
+            user_uid
 
         ];
 
@@ -1286,41 +1324,249 @@ router.use(
 
 
 // =====================================================
-// DELETE ITEM (FOR TEST CLEANUP / RECORD DELETION)
+// GET CURRENT USER'S REPORTS
+// =====================================================
+
+router.get(
+    "/my-reports",
+    verifyFirebaseToken,
+    function(req, res) {
+        ensureTimestampSupport(req.db);
+
+        const uid = req.user.uid;
+
+        const lostQuery = `
+            SELECT
+                serial_number,
+                user_uid,
+                roll_number,
+                item_name,
+                location,
+                description,
+                status,
+                person_name,
+                contact_number,
+                image,
+                created_at
+            FROM \`${LF_DB}\`.\`lost_items\`
+            WHERE user_uid = ?
+            ORDER BY serial_number DESC
+        `;
+
+        const foundQuery = `
+            SELECT
+                serial_number,
+                user_uid,
+                roll_number,
+                item_name,
+                location,
+                description,
+                status,
+                person_name,
+                contact_number,
+                image,
+                created_at
+            FROM \`${LF_DB}\`.\`found_items\`
+            WHERE user_uid = ?
+            ORDER BY serial_number DESC
+        `;
+
+        req.db.query(lostQuery, [uid], function(err1, lostResults) {
+            if (err1) {
+                console.error("Fetch my lost reports error:", err1);
+                return res.status(500).json({ error: "Could not fetch your lost reports", details: err1.message });
+            }
+
+            req.db.query(foundQuery, [uid], function(err2, foundResults) {
+                if (err2) {
+                    console.error("Fetch my found reports error:", err2);
+                    return res.status(500).json({ error: "Could not fetch your found reports", details: err2.message });
+                }
+
+                const formatItems = function(list) {
+                    return (list || []).map(function(item) {
+                        const ts = getItemTimestamp(item);
+                        return {
+                            ...item,
+                            created_at: item.created_at || new Date(ts).toISOString(),
+                            image: getCorrectImage(item)
+                        };
+                    });
+                };
+
+                res.json({
+                    success: true,
+                    lost: formatItems(lostResults),
+                    found: formatItems(foundResults)
+                });
+            });
+        });
+    }
+);
+
+
+// =====================================================
+// EDIT ITEM (OWNER-ONLY)
+// =====================================================
+
+router.put(
+    "/item/:id",
+    verifyFirebaseToken,
+    function(req, res) {
+        const id = req.params.id;
+        let targetTable = req.query.type === "found" ? "found_items" : "lost_items";
+
+        // Check ownership first
+        const checkQuery = "SELECT serial_number, user_uid FROM `" + LF_DB + "`.`" + targetTable + "` WHERE serial_number = ? LIMIT 1";
+
+        req.db.query(checkQuery, [id], function(err, rows) {
+            if (err) {
+                console.error("Check item ownership error:", err);
+                return res.status(500).json({ error: "Could not verify item ownership", details: err.message });
+            }
+
+            if (!rows || rows.length === 0) {
+                // Try checking alternate table if type wasn't specified accurately
+                const alternateTable = targetTable === "found_items" ? "lost_items" : "found_items";
+                const checkAltQuery = "SELECT serial_number, user_uid FROM `" + LF_DB + "`.`" + alternateTable + "` WHERE serial_number = ? LIMIT 1";
+
+                return req.db.query(checkAltQuery, [id], function(altErr, altRows) {
+                    if (altErr || !altRows || altRows.length === 0) {
+                        return res.status(404).json({ error: "Item not found" });
+                    }
+                    proceedUpdate(alternateTable, altRows[0]);
+                });
+            }
+
+            proceedUpdate(targetTable, rows[0]);
+        });
+
+        function proceedUpdate(table, item) {
+            if (!item.user_uid) {
+                return res.status(403).json({
+                    error: "Legacy unowned reports cannot be modified",
+                    code: "LEGACY_RECORD_IMMUTABLE"
+                });
+            }
+
+            if (item.user_uid !== req.user.uid) {
+                return res.status(403).json({
+                    error: "You are not authorized to edit this report",
+                    code: "FORBIDDEN_NOT_OWNER"
+                });
+            }
+
+            const itemName = String(req.body.item_name || "").trim();
+            const description = String(req.body.description || "").trim();
+            const location = String(req.body.location || "").trim();
+            const contactNumber = String(req.body.contact_number || "").trim();
+
+            if (!itemName || !description || !location) {
+                return res.status(400).json({ error: "Item name, description, and location are required." });
+            }
+
+            const updateQuery = `
+                UPDATE \`${LF_DB}\`.\`${table}\`
+                SET item_name = ?, description = ?, location = ?, contact_number = ?
+                WHERE serial_number = ? AND user_uid = ?
+                LIMIT 1
+            `;
+
+            req.db.query(updateQuery, [itemName, description, location, contactNumber, id, req.user.uid], function(uErr, result) {
+                if (uErr) {
+                    console.error("Update item error:", uErr);
+                    return res.status(500).json({ error: "Could not update item", details: uErr.message });
+                }
+
+                res.json({
+                    success: true,
+                    message: "Report updated successfully",
+                    id: id
+                });
+            });
+        }
+    }
+);
+
+
+// =====================================================
+// DELETE ITEM (OWNER-ONLY SECURED)
 // =====================================================
 
 router.delete(
     "/item/:id",
+    verifyFirebaseToken,
     function(req, res) {
 
         const id = req.params.id;
-        const targetTable = req.query.type === "found" ? "found_items" : "lost_items";
+        let targetTable = req.query.type === "found" ? "found_items" : "lost_items";
 
-        const deleteQuery = "DELETE FROM `" + LF_DB + "`.`" + targetTable + "` WHERE serial_number = ? LIMIT 1";
+        // Check ownership first
+        const checkQuery = "SELECT serial_number, user_uid FROM `" + LF_DB + "`.`" + targetTable + "` WHERE serial_number = ? LIMIT 1";
 
-        req.db.query(
-            deleteQuery,
-            [id],
-            function(err, result) {
+        req.db.query(checkQuery, [id], function(err, rows) {
+            if (err) {
+                console.error("Check item ownership error:", err);
+                return res.status(500).json({ error: "Could not verify item ownership", details: err.message });
+            }
 
-                if (err) {
-                    console.error("Delete error:", err);
-                    return res.status(500).json({
-                        error: "Could not delete item",
-                        details: err.message
+            if (!rows || rows.length === 0) {
+                // Try checking alternate table if type wasn't specified accurately
+                const alternateTable = targetTable === "found_items" ? "lost_items" : "found_items";
+                const checkAltQuery = "SELECT serial_number, user_uid FROM `" + LF_DB + "`.`" + alternateTable + "` WHERE serial_number = ? LIMIT 1";
+
+                return req.db.query(checkAltQuery, [id], function(altErr, altRows) {
+                    if (altErr || !altRows || altRows.length === 0) {
+                        return res.status(404).json({ error: "Item not found" });
+                    }
+                    proceedDelete(alternateTable, altRows[0]);
+                });
+            }
+
+            proceedDelete(targetTable, rows[0]);
+        });
+
+        function proceedDelete(table, item) {
+            // Legacy unowned items cannot be deleted
+            if (!item.user_uid) {
+                return res.status(403).json({
+                    error: "Legacy unowned reports cannot be deleted",
+                    code: "LEGACY_RECORD_IMMUTABLE"
+                });
+            }
+
+            // Enforce ownership
+            if (item.user_uid !== req.user.uid) {
+                return res.status(403).json({
+                    error: "You are not authorized to delete this report",
+                    code: "FORBIDDEN_NOT_OWNER"
+                });
+            }
+
+            const deleteQuery = "DELETE FROM `" + LF_DB + "`.`" + table + "` WHERE serial_number = ? AND user_uid = ? LIMIT 1";
+
+            req.db.query(
+                deleteQuery,
+                [id, req.user.uid],
+                function(dErr, result) {
+                    if (dErr) {
+                        console.error("Delete error:", dErr);
+                        return res.status(500).json({
+                            error: "Could not delete item",
+                            details: dErr.message
+                        });
+                    }
+
+                    console.log("Deleted item " + id + " from " + table + ", affectedRows: " + result.affectedRows);
+
+                    res.json({
+                        success: true,
+                        deleted: result.affectedRows,
+                        id: id
                     });
                 }
-
-                console.log("Deleted item " + id + " from " + targetTable + ", affectedRows: " + result.affectedRows);
-
-                res.json({
-                    success: true,
-                    deleted: result.affectedRows,
-                    id: id
-                });
-
-            }
-        );
+            );
+        }
 
     }
 );

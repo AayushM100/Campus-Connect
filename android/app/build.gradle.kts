@@ -63,6 +63,11 @@ dependencies {
   implementation(libs.androidx.compose.material3)
   implementation(libs.androidx.compose.material.icons.extended)
 
+  // Firebase Auth
+  val firebaseBom = platform(libs.firebase.bom)
+  implementation(firebaseBom)
+  implementation(libs.firebase.auth)
+
   // Networking & Image Loading
   implementation(libs.retrofit.core)
   implementation(libs.retrofit.converter.gson)

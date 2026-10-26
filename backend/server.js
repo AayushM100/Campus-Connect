@@ -13,6 +13,7 @@ const cors = require("cors");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const lostfoundRouter = require("./routes/lostfound");
+const { verifyFirebaseToken, optionalAuth } = require("./middleware/auth");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -177,6 +178,7 @@ function ensureOrderTables() {
         orderTablesPromise = Promise.all([
             query(`CREATE TABLE IF NOT EXISTS orders (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                user_uid VARCHAR(128) DEFAULT NULL,
                 razorpay_order_id VARCHAR(64) NOT NULL,
                 razorpay_payment_id VARCHAR(64) DEFAULT NULL,
                 canteen VARCHAR(100) NOT NULL,
@@ -187,7 +189,8 @@ function ensureOrderTables() {
                 status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (id),
-                UNIQUE KEY unique_razorpay_order (razorpay_order_id)
+                UNIQUE KEY unique_razorpay_order (razorpay_order_id),
+                KEY idx_orders_user_uid (user_uid)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`),
             query(`CREATE TABLE IF NOT EXISTS order_items (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -202,6 +205,75 @@ function ensureOrderTables() {
     }
 
     return orderTablesPromise;
+}
+
+let authTablesPromise;
+
+async function ensureColumnExists(tableName, columnName, columnDefinition) {
+    try {
+        const [rows] = await query(
+            `SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+            [tableName, columnName]
+        );
+        if (rows[0] && rows[0].count === 0) {
+            await query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${columnDefinition}`);
+            console.log(`[SCHEMA] Added column ${columnName} to ${tableName}`);
+        }
+    } catch (err) {
+        console.warn(`[SCHEMA] Note: Column check for ${tableName}.${columnName}: ${err.message}`);
+    }
+}
+
+function ensureAuthTables() {
+    if (!authTablesPromise) {
+        authTablesPromise = (async () => {
+            try {
+                await query(`CREATE TABLE IF NOT EXISTS users (
+                    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    firebase_uid VARCHAR(128) NOT NULL,
+                    email VARCHAR(150) NOT NULL,
+                    full_name VARCHAR(100) DEFAULT NULL,
+                    phone VARCHAR(20) DEFAULT NULL,
+                    department VARCHAR(100) DEFAULT NULL,
+                    roll_number VARCHAR(50) DEFAULT NULL,
+                    year VARCHAR(20) DEFAULT NULL,
+                    division VARCHAR(20) DEFAULT NULL,
+                    avatar_url VARCHAR(500) DEFAULT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY unique_firebase_uid (firebase_uid),
+                    KEY idx_users_email (email)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+                await ensureOrderTables();
+                await ensureColumnExists("orders", "user_uid", "VARCHAR(128) DEFAULT NULL");
+                await ensureColumnExists("food_favourites", "user_uid", "VARCHAR(128) DEFAULT NULL");
+            } catch (err) {
+                console.warn("[SCHEMA] Note during auth tables initialization:", err.message);
+            }
+        })();
+    }
+    return authTablesPromise;
+}
+
+function calculateProfileCompletion(user) {
+    if (!user) return 0;
+    const fields = [
+        user.full_name,
+        user.phone,
+        user.department,
+        user.roll_number,
+        user.year,
+        user.division
+    ];
+    let filled = 0;
+    for (const val of fields) {
+        if (val && String(val).trim().length > 0) {
+            filled++;
+        }
+    }
+    return Math.round((filled / fields.length) * 100);
 }
 
 function validateCustomerDetails(body) {
@@ -273,9 +345,30 @@ async function getVerifiedCart(cartItems) {
 }
 
 // Create Razorpay order.
-app.post("/api/create-order", async (req, res) => {
+app.post("/api/create-order", optionalAuth, async (req, res) => {
     try {
-        const customer = validateCustomerDetails(req.body || {});
+        let customer = validateCustomerDetails(req.body || {});
+        if (!customer && req.user) {
+            try {
+                await ensureAuthTables();
+                const [profileRows] = await query(
+                    `SELECT full_name, department, phone, roll_number FROM users WHERE firebase_uid = ? LIMIT 1`,
+                    [req.user.uid]
+                );
+                if (profileRows && profileRows[0]) {
+                    const u = profileRows[0];
+                    customer = validateCustomerDetails({
+                        customer_name: (req.body && req.body.customer_name) || u.full_name,
+                        department: (req.body && req.body.department) || u.department,
+                        customer_phone: (req.body && req.body.customer_phone) || u.phone,
+                        roll_number: (req.body && req.body.roll_number) || u.roll_number
+                    });
+                }
+            } catch (pErr) {
+                console.warn("[CHECKOUT] Profile autofill failed:", pErr.message);
+            }
+        }
+
         if (!customer) {
             return res.status(400).json({
                 error: "Enter a name, department and a valid 10-digit phone number"
@@ -306,11 +399,13 @@ app.post("/api/create-order", async (req, res) => {
         // The Razorpay order and its signature verification remain mandatory.
         let orderRecorded = true;
         try {
-            await ensureOrderTables();
+            await ensureAuthTables();
+            const userUid = req.user ? req.user.uid : null;
             await query(`
-                INSERT INTO orders (razorpay_order_id, canteen, customer_name, department, customer_phone, total_amount, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+                INSERT INTO orders (user_uid, razorpay_order_id, canteen, customer_name, department, customer_phone, total_amount, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
             `, [
+                userUid,
                 razorpayOrder.id,
                 canteensInOrder,
                 customer.customerName,
@@ -460,6 +555,174 @@ app.post("/api/verify-payment", async (req, res) => {
             res,
             err
         );
+    }
+});
+
+// ======================================================
+// 4B. AUTHENTICATED USER ORDERS & PROFILE
+// ======================================================
+
+// GET /api/orders/my-orders
+app.get("/api/orders/my-orders", verifyFirebaseToken, async (req, res) => {
+    try {
+        await ensureAuthTables();
+        const [orders] = await query(
+            `SELECT id, razorpay_order_id, razorpay_payment_id, canteen, customer_name, department, customer_phone, total_amount, status, created_at
+             FROM orders
+             WHERE user_uid = ?
+             ORDER BY created_at DESC`,
+            [req.user.uid]
+        );
+
+        if (!orders.length) {
+            return res.json({ success: true, orders: [] });
+        }
+
+        const orderIds = orders.map((o) => o.razorpay_order_id);
+        const [items] = await query(
+            `SELECT razorpay_order_id, item_name, quantity, price
+             FROM order_items
+             WHERE razorpay_order_id IN (${orderIds.map(() => "?").join(",")})`,
+            orderIds
+        );
+
+        const itemsByOrder = {};
+        for (const item of items) {
+            if (!itemsByOrder[item.razorpay_order_id]) {
+                itemsByOrder[item.razorpay_order_id] = [];
+            }
+            itemsByOrder[item.razorpay_order_id].push(item);
+        }
+
+        const enrichedOrders = orders.map((o) => ({
+            ...o,
+            items: itemsByOrder[o.razorpay_order_id] || []
+        }));
+
+        res.json({ success: true, orders: enrichedOrders });
+    } catch (err) {
+        handleRouteError("Fetch my orders failed:", res, err);
+    }
+});
+
+// GET /api/auth/profile
+app.get("/api/auth/profile", verifyFirebaseToken, async (req, res) => {
+    try {
+        await ensureAuthTables();
+
+        // Ensure user row exists upon sign-in
+        await query(
+            `INSERT INTO users (firebase_uid, email, full_name)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE email = VALUES(email)`,
+            [req.user.uid, req.user.email, req.user.name || ""]
+        );
+
+        const [rows] = await query(
+            `SELECT id, firebase_uid, email, full_name, phone, department, roll_number, year, division, avatar_url, created_at, updated_at
+             FROM users
+             WHERE firebase_uid = ?
+             LIMIT 1`,
+            [req.user.uid]
+        );
+
+        const user = rows[0] || null;
+        const completionPercentage = calculateProfileCompletion(user);
+
+        res.json({
+            success: true,
+            user,
+            completion_percentage: completionPercentage,
+            is_complete: completionPercentage === 100
+        });
+    } catch (err) {
+        handleRouteError("Get profile failed:", res, err);
+    }
+});
+
+// POST /api/auth/profile (Update Profile)
+app.post("/api/auth/profile", verifyFirebaseToken, async (req, res) => {
+    try {
+        await ensureAuthTables();
+        const { full_name, phone, department, roll_number, year, division, avatar_url } = req.body || {};
+
+        await query(
+            `INSERT INTO users (firebase_uid, email, full_name, phone, department, roll_number, year, division, avatar_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                 full_name = COALESCE(VALUES(full_name), full_name),
+                 phone = COALESCE(VALUES(phone), phone),
+                 department = COALESCE(VALUES(department), department),
+                 roll_number = COALESCE(VALUES(roll_number), roll_number),
+                 year = COALESCE(VALUES(year), year),
+                 division = COALESCE(VALUES(division), division),
+                 avatar_url = COALESCE(VALUES(avatar_url), avatar_url),
+                 updated_at = CURRENT_TIMESTAMP`,
+            [
+                req.user.uid,
+                req.user.email,
+                full_name !== undefined ? (String(full_name).trim() || null) : null,
+                phone !== undefined ? (String(phone).replace(/\D/g, "") || null) : null,
+                department !== undefined ? (String(department).trim() || null) : null,
+                roll_number !== undefined ? (String(roll_number).trim() || null) : null,
+                year !== undefined ? (String(year).trim() || null) : null,
+                division !== undefined ? (String(division).trim() || null) : null,
+                avatar_url !== undefined ? (String(avatar_url).trim() || null) : null
+            ]
+        );
+
+        const [rows] = await query(
+            `SELECT id, firebase_uid, email, full_name, phone, department, roll_number, year, division, avatar_url, created_at, updated_at
+             FROM users
+             WHERE firebase_uid = ?
+             LIMIT 1`,
+            [req.user.uid]
+        );
+
+        const user = rows[0] || null;
+        const completionPercentage = calculateProfileCompletion(user);
+
+        res.json({
+            success: true,
+            message: "Profile updated successfully",
+            user,
+            completion_percentage: completionPercentage,
+            is_complete: completionPercentage === 100
+        });
+    } catch (err) {
+        handleRouteError("Update profile failed:", res, err);
+    }
+});
+
+// POST /api/auth/delete-account
+app.post("/api/auth/delete-account", verifyFirebaseToken, async (req, res) => {
+    try {
+        await ensureAuthTables();
+        const uid = req.user.uid;
+
+        // 1. Delete user's favourites
+        await query(`DELETE FROM ${FAVOURITES_TABLE} WHERE user_uid = ?`, [uid]);
+
+        // 2. Delete own lost & found reports
+        try {
+            await query(`DELETE FROM lost_items WHERE user_uid = ?`, [uid]);
+            await query(`DELETE FROM found_items WHERE user_uid = ?`, [uid]);
+        } catch (lfErr) {
+            console.warn("[AUTH] Note during lost & found cleanup:", lfErr.message);
+        }
+
+        // 3. Preserve financial audit: disassociate user_uid from orders
+        await query(`UPDATE orders SET user_uid = NULL WHERE user_uid = ?`, [uid]);
+
+        // 4. Delete user profile record
+        await query(`DELETE FROM users WHERE firebase_uid = ?`, [uid]);
+
+        res.json({
+            success: true,
+            message: "Account and personal data deleted successfully"
+        });
+    } catch (err) {
+        handleRouteError("Delete account failed:", res, err);
     }
 });
 
@@ -695,11 +958,13 @@ app.get("/api/item/:canteen/:id", (req, res) => {
 // POST /api/favourites
 // ======================================================
 
-app.post("/api/favourites", (req, res) => {
+app.post("/api/favourites", optionalAuth, async (req, res) => {
+    await ensureAuthTables();
+    const userUid = req.user ? req.user.uid : null;
     const visitorId = String(
         req.body.visitorId ||
         req.body.visitor_id ||
-        ""
+        (userUid ? `u_${userUid}` : "")
     ).trim();
 
     const canteen = normalizeCanteen(
@@ -709,14 +974,14 @@ app.post("/api/favourites", (req, res) => {
     const itemId = Number(req.body.item_id);
 
     if (
-        !visitorId ||
-        visitorId.length > 100 ||
+        (!visitorId && !userUid) ||
+        (visitorId && visitorId.length > 100) ||
         !canteen ||
         !Number.isInteger(itemId) ||
         itemId < 1
     ) {
         return res.status(400).json({
-            error: "visitorId, canteen and valid item_id are required"
+            error: "visitorId or auth token, canteen and valid item_id are required"
         });
     }
 
@@ -746,14 +1011,15 @@ app.post("/api/favourites", (req, res) => {
             }
 
             const sql = `
-                INSERT IGNORE INTO ${FAVOURITES_TABLE}
-                    (visitor_id, canteen, item_id)
-                VALUES (?, ?, ?)
+                INSERT INTO ${FAVOURITES_TABLE}
+                    (user_uid, visitor_id, canteen, item_id)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE user_uid = COALESCE(VALUES(user_uid), user_uid)
             `;
 
             db.query(
                 sql,
-                [visitorId, canteen, itemId],
+                [userUid, visitorId, canteen, itemId],
                 (err, result) => {
                     if (err) {
                         console.error(
@@ -779,26 +1045,66 @@ app.post("/api/favourites", (req, res) => {
 });
 
 // ======================================================
-// 12. GET FAVOURITES FOR A VISITOR
+// 11B. SYNC FAVOURITES (GUEST TO ACCOUNT)
+// POST /api/favourites/sync
+// ======================================================
+
+app.post("/api/favourites/sync", verifyFirebaseToken, async (req, res) => {
+    try {
+        await ensureAuthTables();
+        const visitorId = String(req.body.visitorId || req.body.visitor_id || "").trim();
+        if (!visitorId) {
+            return res.json({ success: true, synced: 0 });
+        }
+
+        const [result] = await query(
+            `UPDATE ${FAVOURITES_TABLE}
+             SET user_uid = ?
+             WHERE visitor_id = ?
+               AND (user_uid IS NULL OR user_uid = ?)`,
+            [req.user.uid, visitorId, req.user.uid]
+        );
+
+        res.json({ success: true, synced: result.affectedRows });
+    } catch (err) {
+        handleRouteError("Sync favourites failed:", res, err);
+    }
+});
+
+// ======================================================
+// 12. GET FAVOURITES FOR A VISITOR OR USER
 // GET /api/favourites/:visitorId
 // ======================================================
 
-app.get("/api/favourites/:visitorId", (req, res) => {
+app.get("/api/favourites/:visitorId", optionalAuth, async (req, res) => {
+    await ensureAuthTables();
     const visitorId = String(
         req.params.visitorId || ""
     ).trim();
+    const userUid = req.user ? req.user.uid : null;
 
-    if (!visitorId || visitorId.length > 100) {
+    if (!visitorId && !userUid) {
         return res.status(400).json({
-            error: "Valid visitor ID required"
+            error: "Valid visitor ID or authentication required"
         });
     }
 
+    let sql, params;
+    if (userUid) {
+        sql = `SELECT DISTINCT canteen, item_id
+               FROM ${FAVOURITES_TABLE}
+               WHERE user_uid = ? OR (visitor_id = ? AND visitor_id != '')`;
+        params = [userUid, visitorId];
+    } else {
+        sql = `SELECT canteen, item_id
+               FROM ${FAVOURITES_TABLE}
+               WHERE visitor_id = ?`;
+        params = [visitorId];
+    }
+
     db.query(
-        `SELECT canteen, item_id
-         FROM ${FAVOURITES_TABLE}
-         WHERE visitor_id = ?`,
-        [visitorId],
+        sql,
+        params,
         (err, rows) => {
             if (err) {
                 console.error(
@@ -821,7 +1127,9 @@ app.get("/api/favourites/:visitorId", (req, res) => {
 // DELETE /api/favourites
 // ======================================================
 
-app.delete("/api/favourites", (req, res) => {
+app.delete("/api/favourites", optionalAuth, async (req, res) => {
+    await ensureAuthTables();
+    const userUid = req.user ? req.user.uid : null;
     const visitorId = String(
         req.body.visitorId ||
         req.body.visitor_id ||
@@ -835,23 +1143,35 @@ app.delete("/api/favourites", (req, res) => {
     const itemId = Number(req.body.item_id);
 
     if (
-        !visitorId ||
-        visitorId.length > 100 ||
+        (!visitorId && !userUid) ||
+        (visitorId && visitorId.length > 100) ||
         !canteen ||
         !Number.isInteger(itemId) ||
         itemId < 1
     ) {
         return res.status(400).json({
-            error: "visitorId, canteen and valid item_id are required"
+            error: "visitorId or auth token, canteen and valid item_id are required"
         });
     }
 
+    let sql, params;
+    if (userUid) {
+        sql = `DELETE FROM ${FAVOURITES_TABLE}
+               WHERE (user_uid = ? OR (visitor_id = ? AND visitor_id != ''))
+                 AND canteen = ?
+                 AND item_id = ?`;
+        params = [userUid, visitorId, canteen, itemId];
+    } else {
+        sql = `DELETE FROM ${FAVOURITES_TABLE}
+               WHERE visitor_id = ?
+                 AND canteen = ?
+                 AND item_id = ?`;
+        params = [visitorId, canteen, itemId];
+    }
+
     db.query(
-        `DELETE FROM ${FAVOURITES_TABLE}
-         WHERE visitor_id = ?
-           AND canteen = ?
-           AND item_id = ?`,
-        [visitorId, canteen, itemId],
+        sql,
+        params,
         (err) => {
             if (err) {
                 console.error(

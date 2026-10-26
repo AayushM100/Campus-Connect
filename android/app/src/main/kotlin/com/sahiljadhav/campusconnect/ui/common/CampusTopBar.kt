@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material3.Badge
@@ -40,6 +41,9 @@ fun CampusTopBar(
     title: String = "CampusConnect",
     subtitle: String? = null,
     trayItemCount: Int = 0,
+    isLoggedIn: Boolean = false,
+    userDisplayName: String? = null,
+    onAccountClick: (() -> Unit)? = null,
     onTrayClick: (() -> Unit)? = null,
     onRefreshClick: (() -> Unit)? = null
 ) {
@@ -108,6 +112,34 @@ fun CampusTopBar(
                             imageVector = Icons.Rounded.ShoppingBag,
                             contentDescription = "Canteen Tray",
                             tint = if (trayItemCount > 0) BrandOrange else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (onAccountClick != null) {
+                IconButton(onClick = onAccountClick) {
+                    if (isLoggedIn) {
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(BrandOrange),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val initial = (userDisplayName?.take(1) ?: "U").uppercase()
+                            Text(
+                                text = initial,
+                                color = androidx.compose.ui.graphics.Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.AccountCircle,
+                            contentDescription = "Account Sign In",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CampusConnect — Sign In</title>
+  <title>CampusConnect — Student Portal</title>
   <link rel="icon" type="image/png" href="../logo.png">
   <link rel="stylesheet" href="tokens.css">
   <script>
@@ -25,6 +25,12 @@
       --cream: #fff8f0;
       --muted: #667085;
       --border: #e8e1d9;
+      --error-bg: #fef2f2;
+      --error-border: #fecaca;
+      --error-text: #991b1b;
+      --success-bg: #f0fdf4;
+      --success-border: #bbf7d0;
+      --success-text: #166534;
     }
 
     * { box-sizing: border-box; }
@@ -130,7 +136,7 @@
       background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
     }
 
-    .login-card { width: 430px; }
+    .login-card { width: 440px; }
 
     .login-card .eyebrow {
       color: var(--orange-dark);
@@ -140,28 +146,79 @@
 
     .login-card h2 {
       margin: 0 0 10px;
-      font-size: 38px;
+      font-size: 34px;
       letter-spacing: -1px;
     }
 
     .intro {
-      margin: 0 0 32px;
+      margin: 0 0 24px;
       color: var(--muted);
       line-height: 1.6;
     }
 
-    .field { margin-bottom: 20px; }
+    /* Auth Mode Tabs */
+    .auth-tabs {
+      display: flex;
+      background: #eee7de;
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 22px;
+      gap: 4px;
+    }
+
+    .auth-tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      border-radius: 9px;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+
+    .auth-tab-btn.active {
+      background: white;
+      color: var(--navy);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* Message Alert */
+    .auth-alert {
+      display: none;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .auth-alert.error {
+      display: block;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error-text);
+    }
+    .auth-alert.success {
+      display: block;
+      background: var(--success-bg);
+      border: 1px solid var(--success-border);
+      color: var(--success-text);
+    }
+
+    .field { margin-bottom: 16px; }
 
     label {
       display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
+      margin-bottom: 7px;
+      font-size: 13.5px;
       font-weight: 650;
     }
 
-    input[type="email"], input[type="password"] {
+    input[type="text"], input[type="email"], input[type="password"] {
       width: 100%;
-      padding: 15px 16px;
+      padding: 14px 16px;
       border: 2px solid var(--border);
       border-radius: 11px;
       background: white;
@@ -177,25 +234,14 @@
     }
 
     .password-box { position: relative; }
-
     .password-box input { padding-right: 52px; }
-
-    .password-hint {
-      position: absolute;
-      right: 15px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted);
-      font-size: 13px;
-      pointer-events: none;
-    }
 
     .options {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 15px;
-      margin: 4px 0 25px;
+      margin: 4px 0 22px;
       font-size: 13px;
     }
 
@@ -204,50 +250,58 @@
       align-items: center;
       gap: 8px;
       color: var(--muted);
+      cursor: pointer;
     }
 
     .remember input { accent-color: var(--orange); }
 
-    .forgot { color: var(--orange-dark); text-decoration: none; font-weight: 600; }
+    .forgot { color: var(--orange-dark); text-decoration: none; font-weight: 600; cursor: pointer; }
     .forgot:hover { text-decoration: underline; }
 
     .signin-btn {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 15px 18px;
-  border: 0;
-  border-radius: 11px;
-  background: var(--orange);
-  color: white;
-  font: inherit;
-  font-weight: 700;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-  box-shadow: 0 8px 18px rgba(217, 107, 39, .2);
-  transition: transform .2s ease, background .2s ease;
-}
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 15px 18px;
+      border: 0;
+      border-radius: 11px;
+      background: var(--orange);
+      color: white;
+      font: inherit;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(217, 107, 39, .2);
+      transition: transform .2s ease, background .2s ease;
+    }
 
-.signin-btn:hover {
-  transform: translateY(-2px);
-  background: var(--orange-dark);
-}
+    .signin-btn:hover {
+      transform: translateY(-2px);
+      background: var(--orange-dark);
+    }
 
-    .signup {
-      margin: 25px 0 0;
+    .signin-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .signup-toggle-text {
+      margin: 22px 0 0;
       color: var(--muted);
       text-align: center;
       font-size: 14px;
     }
 
-    .signup a { color: var(--orange-dark); font-weight: 700; text-decoration: none; }
+    .signup-toggle-text a { color: var(--orange-dark); font-weight: 700; text-decoration: none; cursor: pointer; }
+    .signup-toggle-text a:hover { text-decoration: underline; }
 
     .security-note {
       display: flex;
       gap: 9px;
       align-items: flex-start;
-      margin-top: 28px;
+      margin-top: 24px;
       padding: 13px 15px;
       border-radius: 10px;
       background: #f8f4ef;
@@ -255,6 +309,7 @@
       font-size: 12px;
       line-height: 1.5;
     }
+
     /* Dark Mode Signin Styling */
     body.dark-mode {
       background: #0b111e;
@@ -262,6 +317,16 @@
     }
     body.dark-mode .login-panel {
       background: #0b111e;
+    }
+    body.dark-mode .auth-tabs {
+      background: #192238;
+    }
+    body.dark-mode .auth-tab-btn {
+      color: #94a3b8;
+    }
+    body.dark-mode .auth-tab-btn.active {
+      background: #24304f;
+      color: #f8fafc;
     }
     body.dark-mode .login-card h2 {
       color: #f8fafc;
@@ -272,6 +337,7 @@
     body.dark-mode label {
       color: #cbd5e1;
     }
+    body.dark-mode input[type="text"],
     body.dark-mode input[type="email"],
     body.dark-mode input[type="password"] {
       background: #131b2e;
@@ -287,14 +353,46 @@
       color: #94a3b8;
       border: 1px solid #23304c;
     }
-    body.dark-mode .signup {
+    body.dark-mode .signup-toggle-text {
       color: #94a3b8;
     }
-    body.dark-mode .signup a,
+    body.dark-mode .signup-toggle-text a,
     body.dark-mode .forgot {
       color: #fb923c;
     }
+    body.dark-mode .auth-alert.error {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+    body.dark-mode .auth-alert.success {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: rgba(34, 197, 94, 0.3);
+      color: #86efac;
+    }
+
+    @media (max-width: 900px) {
+      .signin-page {
+        grid-template-columns: 1fr;
+      }
+      .campus-panel {
+        display: none;
+      }
+      .login-panel {
+        padding: 40px 20px;
+      }
+      .login-card {
+        width: 100%;
+        max-width: 440px;
+      }
+    }
   </style>
+
+  <!-- Firebase Web SDK v10 (Compat Mode) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="auth/firebase-config.js"></script>
+  <script src="auth/auth-service.js"></script>
 </head>
 <body>
   <main class="signin-page">
@@ -319,53 +417,233 @@
           <span class="eyebrow" style="margin-bottom: 0;">Student Portal</span>
           <button type="button" class="cc-theme-toggle" aria-label="Toggle theme"></button>
         </div>
-        <h2>Welcome back 👋</h2>
-        <p class="intro">Sign in to continue exploring CampusConnect.</p>
 
-        <form>
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab-btn active" id="tab-signin" role="tab">Sign In</button>
+          <button type="button" class="auth-tab-btn" id="tab-signup" role="tab">Create Account</button>
+        </div>
+
+        <div id="auth-alert" class="auth-alert" role="alert"></div>
+
+        <!-- SIGN IN FORM -->
+        <form id="signin-form">
+          <h2 id="form-heading">Welcome back 👋</h2>
+          <p class="intro" id="form-subheading">Sign in to continue exploring CampusConnect.</p>
+
+          <div class="field" id="field-name" style="display: none;">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" name="full_name" placeholder="Sahil Jadhav">
+          </div>
+
           <div class="field">
             <label for="email">College Email</label>
-            <input type="email" id="email" name="email" placeholder="student@dypcoe.edu.in" required>
+            <input type="email" id="email" name="email" placeholder="student@dypcoe.edu.in" required autocomplete="email">
           </div>
 
           <div class="field">
             <label for="password">Password</label>
             <div class="password-box">
-              <input type="password" id="password" name="password" placeholder="Enter your password" required>
-              <span class="password-hint">•••</span>
+              <input type="password" id="password" name="password" placeholder="Enter your password" required minlength="6" autocomplete="current-password">
             </div>
           </div>
 
-          <div class="options">
-            <label class="remember"><input type="checkbox" name="remember"> Remember me</label>
-            <a class="forgot" href="#">Forgot password?</a>
+          <div class="options" id="signin-options">
+            <label class="remember"><input type="checkbox" id="remember" name="remember" checked> Remember me</label>
+            <a class="forgot" id="forgot-link">Forgot password?</a>
           </div>
 
-          <button class="signin-btn" type="submit">Sign In →</button> 
+          <button class="signin-btn" id="submit-btn" type="submit">Sign In →</button> 
         </form>
 
-        <p class="signup">Don't have an account? <a href="#">Create one</a></p>
+        <p class="signup-toggle-text" id="toggle-prompt">Don't have an account? <a id="toggle-link">Create one</a></p>
 
         <div class="security-note">
           <span>🔒</span>
-          <span>Your CampusConnect account is intended for the college community.</span>
+          <span>Your CampusConnect account is verified and shared across web &amp; mobile.</span>
         </div>
       </div>
     </section>
   </main>
-  <script>
-  document.querySelector("form").addEventListener("submit", function(event) {
-    event.preventDefault();
-    const emailInput = document.getElementById("email");
-    if (emailInput && emailInput.value.trim()) {
-      const email = emailInput.value.trim();
-      let studentName = email.split("@")[0];
-      studentName = studentName.charAt(0).toUpperCase() + studentName.slice(1);
-      localStorage.setItem("studentName", studentName);
-    }
-    window.location.href = "dashboard.html";
-  });
-</script>
+
   <script src="theme.js"></script>
+  <script>
+    (function() {
+      let isSignUpMode = false;
+      let isForgotMode = false;
+
+      const tabSignIn = document.getElementById("tab-signin");
+      const tabSignUp = document.getElementById("tab-signup");
+      const form = document.getElementById("signin-form");
+      const heading = document.getElementById("form-heading");
+      const subheading = document.getElementById("form-subheading");
+      const fieldName = document.getElementById("field-name");
+      const inputName = document.getElementById("full_name");
+      const inputEmail = document.getElementById("email");
+      const inputPassword = document.getElementById("password");
+      const signinOptions = document.getElementById("signin-options");
+      const submitBtn = document.getElementById("submit-btn");
+      const togglePrompt = document.getElementById("toggle-prompt");
+      const toggleLink = document.getElementById("toggle-link");
+      const forgotLink = document.getElementById("forgot-link");
+      const alertBox = document.getElementById("auth-alert");
+
+      function showAlert(msg, type) {
+        alertBox.className = "auth-alert " + (type || "error");
+        alertBox.textContent = msg;
+        alertBox.style.display = "block";
+      }
+
+      function clearAlert() {
+        alertBox.style.display = "none";
+        alertBox.textContent = "";
+      }
+
+      function setMode(mode) {
+        clearAlert();
+        if (mode === "signup") {
+          isSignUpMode = true;
+          isForgotMode = false;
+          tabSignIn.classList.remove("active");
+          tabSignUp.classList.add("active");
+          heading.textContent = "Create an account 🚀";
+          subheading.textContent = "Join the CampusConnect student community.";
+          fieldName.style.display = "block";
+          inputName.required = true;
+          inputPassword.parentElement.parentElement.style.display = "block";
+          inputPassword.required = true;
+          signinOptions.style.display = "none";
+          submitBtn.textContent = "Create Account →";
+          togglePrompt.innerHTML = 'Already have an account? <a id="toggle-link">Sign In</a>';
+        } else if (mode === "forgot") {
+          isSignUpMode = false;
+          isForgotMode = true;
+          tabSignIn.classList.remove("active");
+          tabSignUp.classList.remove("active");
+          heading.textContent = "Reset Password 🔑";
+          subheading.textContent = "Enter your college email to receive a password reset link.";
+          fieldName.style.display = "none";
+          inputName.required = false;
+          inputPassword.parentElement.parentElement.style.display = "none";
+          inputPassword.required = false;
+          signinOptions.style.display = "none";
+          submitBtn.textContent = "Send Reset Link →";
+          togglePrompt.innerHTML = 'Remembered your password? <a id="toggle-link">Back to Sign In</a>';
+        } else {
+          isSignUpMode = false;
+          isForgotMode = false;
+          tabSignIn.classList.add("active");
+          tabSignUp.classList.remove("active");
+          heading.textContent = "Welcome back 👋";
+          subheading.textContent = "Sign in to continue exploring CampusConnect.";
+          fieldName.style.display = "none";
+          inputName.required = false;
+          inputPassword.parentElement.parentElement.style.display = "block";
+          inputPassword.required = true;
+          signinOptions.style.display = "flex";
+          submitBtn.textContent = "Sign In →";
+          togglePrompt.innerHTML = 'Don\'t have an account? <a id="toggle-link">Create one</a>';
+        }
+
+        // Rebind toggle link
+        const newToggle = document.getElementById("toggle-link");
+        if (newToggle) {
+          newToggle.onclick = function() {
+            setMode(isSignUpMode || isForgotMode ? "signin" : "signup");
+          };
+        }
+      }
+
+      tabSignIn.addEventListener("click", function() { setMode("signin"); });
+      tabSignUp.addEventListener("click", function() { setMode("signup"); });
+      forgotLink.addEventListener("click", function() { setMode("forgot"); });
+      toggleLink.addEventListener("click", function() { setMode("signup"); });
+
+      // Handle submission
+      form.addEventListener("submit", async function(e) {
+        e.preventDefault();
+        clearAlert();
+
+        const email = inputEmail.value.trim();
+        const password = inputPassword.value;
+        const fullName = inputName.value.trim();
+
+        if (isForgotMode) {
+          if (!email) {
+            showAlert("Please enter your college email address.");
+            return;
+          }
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Sending link...";
+          try {
+            await CampusAuth.sendPasswordReset(email);
+            showAlert("Password reset email sent! Check your inbox.", "success");
+            setTimeout(function() { setMode("signin"); }, 3000);
+          } catch (err) {
+            showAlert(err.message || "Could not send reset email. Verify your email address.");
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Send Reset Link →";
+          }
+          return;
+        }
+
+        if (isSignUpMode) {
+          if (!fullName) {
+            showAlert("Please enter your full name.");
+            return;
+          }
+          if (password.length < 6) {
+            showAlert("Password must be at least 6 characters long.");
+            return;
+          }
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Creating Account...";
+          try {
+            await CampusAuth.signUp(email, password, fullName);
+            // Create user row in backend database
+            try {
+              await CampusAuth.updateProfile({ full_name: fullName });
+            } catch (pErr) {
+              console.warn("Backend profile initialization notice:", pErr);
+            }
+            showAlert("Account created successfully! Redirecting...", "success");
+            const returnUrl = new URLSearchParams(window.location.search).get("return") || "dashboard.html";
+            setTimeout(function() {
+              window.location.href = returnUrl;
+            }, 800);
+          } catch (err) {
+            let msg = err.message || "Failed to create account.";
+            if (err.code === "auth/email-already-in-use") msg = "This email is already registered. Please sign in.";
+            if (err.code === "auth/invalid-email") msg = "Please enter a valid email address.";
+            if (err.code === "auth/weak-password") msg = "Password is too weak. Use at least 6 characters.";
+            showAlert(msg);
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Create Account →";
+          }
+          return;
+        }
+
+        // SIGN IN
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Signing In...";
+        try {
+          await CampusAuth.signIn(email, password);
+          showAlert("Signed in successfully! Redirecting...", "success");
+          const returnUrl = new URLSearchParams(window.location.search).get("return") || "dashboard.html";
+          setTimeout(function() {
+            window.location.href = returnUrl;
+          }, 600);
+        } catch (err) {
+          let msg = err.message || "Sign in failed.";
+          if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+            msg = "Invalid email or password. Please try again.";
+          }
+          showAlert(msg);
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Sign In →";
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
