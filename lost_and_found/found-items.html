@@ -57,7 +57,7 @@
                 Lost Items
             </a>
 
-            <a href="found-items.html">
+            <a href="found-items.html" class="active">
                 Found Items
             </a>
 
@@ -108,6 +108,14 @@
 
             </p>
 
+        </div>
+
+        <div class="items-filter-bar">
+            <div class="search-input-wrapper">
+                <span class="search-icon-inline">🔍</span>
+                <input type="text" id="filterInput" placeholder="Filter found items by name, location, or keyword..." />
+            </div>
+            <div class="item-count-badge" id="itemCountBadge">Loading items...</div>
         </div>
 
 
@@ -322,6 +330,8 @@
         }
 
         function handleItemImageError(imgEl, itemName) {
+            console.warn("[Lost & Found] Image load failure:", imgEl.src, "for item:", itemName);
+
             if (imgEl.getAttribute("data-fallback-tried") === "backend") {
                 imgEl.setAttribute("data-fallback-tried", "dict");
                 const dictFallback = getDictionaryFallback(itemName);
@@ -329,7 +339,7 @@
                     imgEl.src = dictFallback;
                     return;
                 }
-                showFallbackIcon(imgEl);
+                showFallbackIcon(imgEl, itemName);
                 return;
             }
 
@@ -348,24 +358,169 @@
                 }
             }
 
-            showFallbackIcon(imgEl);
+            showFallbackIcon(imgEl, itemName);
         }
 
-        function showFallbackIcon(imgEl) {
+        function showFallbackIcon(imgEl, itemName) {
             imgEl.style.display = "none";
             const parent = imgEl.parentElement;
-            if (parent && !parent.querySelector(".image-fallback")) {
-                const fallback = document.createElement("span");
-                fallback.className = "image-fallback";
-                fallback.style.fontSize = "60px";
-                fallback.innerText = "📦";
+            if (parent && !parent.querySelector(".image-fallback-container")) {
+                const fallback = document.createElement("div");
+                fallback.className = "image-fallback-container";
+                fallback.innerHTML = `
+                    <div class="fallback-icon-badge">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </div>
+                    <span class="fallback-text">Photo not available</span>
+                `;
                 parent.appendChild(fallback);
             }
         }
 
 
         // =====================================================
-        // LOAD FOUND ITEMS FROM EXPRESS + MYSQL
+        // ESCAPE HTML
+        // =====================================================
+
+        function escapeHTML(value) {
+            return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // =====================================================
+        // FILTER & COUNT HELPERS
+        // =====================================================
+
+        const filterInput = document.getElementById("filterInput");
+        const itemCountBadge = document.getElementById("itemCountBadge");
+
+        function updateItemCount(count) {
+            if (itemCountBadge) {
+                itemCountBadge.textContent = `Showing ${count} item${count === 1 ? '' : 's'}`;
+            }
+        }
+
+        function createFoundCard(item) {
+            const itemName = item.item_name || "Unknown Item";
+            const description = item.description || "No description provided.";
+            const location = item.location || "Location not specified";
+            const status = item.status || "found";
+            const imageUrl = resolveItemImageUrl(item.image, itemName);
+
+            let imageHTML;
+            if (imageUrl) {
+                imageHTML = `
+                    <img
+                        src="${escapeHTML(imageUrl)}"
+                        alt="${escapeHTML(itemName)}"
+                        class="lost-item-image"
+                        onerror="handleItemImageError(this, decodeURIComponent('${encodeURIComponent(itemName)}'))"
+                    >
+                `;
+            } else {
+                imageHTML = `
+                    <div class="image-fallback-container">
+                        <div class="fallback-icon-badge">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                        </div>
+                        <span class="fallback-text">Photo not available</span>
+                    </div>
+                `;
+            }
+
+            const card = document.createElement("div");
+            card.className = "item-card";
+            card.setAttribute("data-status", String(status).toLowerCase());
+
+            card.innerHTML = `
+                <!-- ================= IMAGE ================= -->
+                <div class="item-image orange-image">
+                    ${imageHTML}
+                </div>
+
+                <!-- ================= CONTENT ================= -->
+                <div class="item-content">
+                    <div class="item-top">
+                        <span class="status found">
+                            FOUND
+                        </span>
+                        <span class="date">
+                            ${formatItemDate(item)}
+                        </span>
+                    </div>
+
+                    <h3>
+                        ${escapeHTML(itemName)}
+                    </h3>
+
+                    <p>
+                        ${escapeHTML(description)}
+                    </p>
+
+                    <div class="item-location">
+                        📍 ${escapeHTML(location)}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function renderFoundCards(itemsList) {
+            foundItemsGrid.innerHTML = "";
+
+            if (!Array.isArray(itemsList) || itemsList.length === 0) {
+                foundItemsGrid.innerHTML = `
+                    <div class="no-items">
+                        <h3>No matching found items.</h3>
+                        <p>Try refining your search keyword or report a lost item.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            itemsList.forEach(function(item) {
+                foundItemsGrid.appendChild(createFoundCard(item));
+            });
+        }
+
+        if (filterInput) {
+            filterInput.addEventListener("input", function() {
+                const query = this.value.trim().toLowerCase();
+                const items = window.allFoundItems || [];
+
+                if (!query) {
+                    renderFoundCards(items);
+                    updateItemCount(items.length);
+                    return;
+                }
+
+                const filtered = items.filter(item => {
+                    const name = String(item.item_name || "").toLowerCase();
+                    const desc = String(item.description || "").toLowerCase();
+                    const loc = String(item.location || "").toLowerCase();
+                    return name.includes(query) || desc.includes(query) || loc.includes(query);
+                });
+
+                renderFoundCards(filtered);
+                updateItemCount(filtered.length);
+            });
+        }
+
+        // =====================================================
+        // LOAD FOUND ITEMS
         // =====================================================
 
         async function loadFoundItems() {
@@ -384,87 +539,19 @@
 
                 console.log("Found items received from Express:", items);
 
-                foundItemsGrid.innerHTML = "";
-
                 if (!Array.isArray(items) || items.length === 0) {
-                    foundItemsGrid.innerHTML = `
-                        <div class="no-items">
-                            <h3>No found items reported yet.</h3>
-                            <p>Be the first to report a found item.</p>
-                        </div>
-                    `;
+                    window.allFoundItems = [];
+                    renderFoundCards([]);
+                    updateItemCount(0);
                     return;
                 }
 
                 // Deterministic sort: newest first
                 items.sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
+                window.allFoundItems = items;
 
-                // =================================================
-                // CREATE CARDS FROM DATABASE
-                // =================================================
-
-                items.forEach(function(item) {
-
-                    const itemName = item.item_name || "Unknown Item";
-                    const description = item.description || "No description provided.";
-                    const location = item.location || "Location not specified";
-                    const status = item.status || "found";
-                    const imageUrl = resolveItemImageUrl(item.image, itemName);
-
-                    let imageHTML;
-                    if (imageUrl) {
-                        imageHTML = `
-                            <img
-                                src="${escapeHTML(imageUrl)}"
-                                alt="${escapeHTML(itemName)}"
-                                class="lost-item-image"
-                                onerror="handleItemImageError(this, '${escapeHTML(itemName)}')"
-                            >
-                        `;
-                    } else {
-                        imageHTML = `
-                            <span style="font-size: 60px;">📦</span>
-                        `;
-                    }
-
-                    const card = document.createElement("div");
-                    card.className = "item-card";
-                    card.setAttribute("data-status", status.toLowerCase());
-
-                    card.innerHTML = `
-                        <!-- ================= IMAGE ================= -->
-                        <div class="item-image orange-image">
-                            ${imageHTML}
-                        </div>
-
-                        <!-- ================= CONTENT ================= -->
-                        <div class="item-content">
-                            <div class="item-top">
-                                <span class="status found">
-                                    FOUND
-                                </span>
-                                <span class="date">
-                                    ${formatItemDate(item)}
-                                </span>
-                            </div>
-
-                            <h3>
-                                ${escapeHTML(itemName)}
-                            </h3>
-
-                            <p>
-                                ${escapeHTML(description)}
-                            </p>
-
-                            <div class="item-location">
-                                📍 ${escapeHTML(location)}
-                            </div>
-                        </div>
-                    `;
-
-                    foundItemsGrid.appendChild(card);
-
-                });
+                renderFoundCards(items);
+                updateItemCount(items.length);
 
             }
 
@@ -482,29 +569,11 @@
                     </div>
                 `;
 
+                if (itemCountBadge) {
+                    itemCountBadge.textContent = "Offline";
+                }
+
             }
-
-        }
-
-
-
-        // =====================================================
-        // ESCAPE DATABASE TEXT
-        // =====================================================
-
-        function escapeHTML(value) {
-
-            return String(value)
-
-                .replace(/&/g, "&amp;")
-
-                .replace(/</g, "&lt;")
-
-                .replace(/>/g, "&gt;")
-
-                .replace(/"/g, "&quot;")
-
-                .replace(/'/g, "&#039;");
 
         }
 

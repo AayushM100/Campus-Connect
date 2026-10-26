@@ -31,73 +31,6 @@
         href="lost.css"
     >
 
-    <style>
-
-        .browse-results {
-            margin-top: 50px;
-        }
-
-        .browse-message {
-            text-align: center;
-            padding: 60px 20px;
-            color: #71819a;
-        }
-
-        .browse-message h3 {
-            color: #14213d;
-            font-size: 25px;
-            margin-bottom: 10px;
-        }
-
-        .browse-card {
-            overflow: hidden;
-        }
-
-        .browse-card .item-image {
-            min-height: 260px;
-        }
-
-        .browse-card .item-image img {
-            width: 100%;
-            height: 260px;
-            object-fit: cover;
-            display: block;
-        }
-
-        .details-btn {
-            margin-top: 20px;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            background: #14213d;
-            color: white;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .details-btn:hover {
-            background: #c85a00;
-        }
-
-        .details-box {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 10px;
-            background: #f7f8fa;
-            display: none;
-        }
-
-        .details-box.show {
-            display: block;
-        }
-
-        .details-box p {
-            margin: 7px 0;
-        }
-
-    </style>
-
 </head>
 
 
@@ -137,7 +70,7 @@
                 Found Items
             </a>
 
-            <a href="browse.html">
+            <a href="browse.html" class="active">
                 Browse Items
             </a>
 
@@ -186,7 +119,12 @@
 
         </div>
 
-
+        <!-- ================= STATUS PILL TABS ================= -->
+        <div class="status-pill-group">
+            <button type="button" class="status-pill-btn active" data-filter="all">All Items</button>
+            <button type="button" class="status-pill-btn" data-filter="lost">Lost Items</button>
+            <button type="button" class="status-pill-btn" data-filter="found">Found Items</button>
+        </div>
 
         <!-- ================= SEARCH ================= -->
 
@@ -216,10 +154,12 @@
             </select>
 
 
-            <button id="browseButton">
-
+            <button id="browseButton" type="button">
                 Search
+            </button>
 
+            <button id="clearFiltersBtn" type="button" class="clear-filters-btn">
+                Clear
             </button>
 
         </div>
@@ -462,6 +402,8 @@
         }
 
         function handleItemImageError(imgEl, itemName) {
+            console.warn("[Lost & Found] Image load failure:", imgEl.src, "for item:", itemName);
+
             if (imgEl.getAttribute("data-fallback-tried") === "backend") {
                 imgEl.setAttribute("data-fallback-tried", "dict");
                 const dictFallback = getDictionaryFallback(itemName);
@@ -469,7 +411,7 @@
                     imgEl.src = dictFallback;
                     return;
                 }
-                showFallbackIcon(imgEl);
+                showFallbackIcon(imgEl, itemName);
                 return;
             }
 
@@ -488,14 +430,26 @@
                 }
             }
 
-            showFallbackIcon(imgEl);
+            showFallbackIcon(imgEl, itemName);
         }
 
-        function showFallbackIcon(imgEl) {
+        function showFallbackIcon(imgEl, itemName) {
             imgEl.style.display = "none";
             const parent = imgEl.parentElement;
-            if (parent && !parent.querySelector(".image-fallback")) {
-                parent.innerHTML = '<div style="height:260px;display:flex;align-items:center;justify-content:center;font-size:70px;">📦</div>';
+            if (parent && !parent.querySelector(".image-fallback-container")) {
+                const fallback = document.createElement("div");
+                fallback.className = "image-fallback-container";
+                fallback.innerHTML = `
+                    <div class="fallback-icon-badge">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </div>
+                    <span class="fallback-text">Photo not available</span>
+                `;
+                parent.appendChild(fallback);
             }
         }
 
@@ -978,16 +932,15 @@
                     }
                     else {
                         imageHTML = `
-                            <div
-                                style="
-                                    height:260px;
-                                    display:flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    font-size:70px;
-                                "
-                            >
-                                📦
+                            <div class="image-fallback-container">
+                                <div class="fallback-icon-badge">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                </div>
+                                <span class="fallback-text">Photo not available</span>
                             </div>
                         `;
                     }
@@ -1251,17 +1204,53 @@
 
 
         // =====================================================
-        // FILTER CHANGE
+        // FILTER CHANGE & PILL TABS
         // =====================================================
+
+        const pillButtons = document.querySelectorAll(".status-pill-btn");
+
+        pillButtons.forEach(function(btn) {
+            btn.addEventListener("click", function() {
+                pillButtons.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                const filterVal = btn.getAttribute("data-filter");
+                if (filterVal && statusFilter) {
+                    statusFilter.value = filterVal;
+                    searchItems();
+                }
+            });
+        });
 
         statusFilter.addEventListener(
             "change",
             function() {
 
+                const currentVal = statusFilter.value;
+                pillButtons.forEach(btn => {
+                    if (btn.getAttribute("data-filter") === currentVal) {
+                        btn.classList.add("active");
+                    } else {
+                        btn.classList.remove("active");
+                    }
+                });
+
                 searchItems();
 
             }
         );
+
+        const clearBtn = document.getElementById("clearFiltersBtn");
+        if (clearBtn) {
+            clearBtn.addEventListener("click", function() {
+                searchInput.value = "";
+                statusFilter.value = "all";
+                pillButtons.forEach(b => {
+                    if (b.getAttribute("data-filter") === "all") b.classList.add("active");
+                    else b.classList.remove("active");
+                });
+                searchItems();
+            });
+        }
 
 
 
