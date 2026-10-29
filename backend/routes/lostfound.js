@@ -882,6 +882,25 @@ router.get(
 
 
 // =====================================================
+// PHONE NUMBER NORMALIZATION & VALIDATION HELPER
+// =====================================================
+
+function normalizeContactNumber(contact) {
+    if (!contact) return null;
+    let digits = String(contact).replace(/\D/g, "");
+    if (digits.length === 12 && digits.startsWith("91")) {
+        digits = digits.slice(2);
+    } else if (digits.length === 11 && digits.startsWith("0")) {
+        digits = digits.slice(1);
+    }
+    if (digits.length === 10) {
+        return digits;
+    }
+    return null;
+}
+
+
+// =====================================================
 // REPORT LOST / FOUND ITEM
 // =====================================================
 //
@@ -982,14 +1001,25 @@ router.post(
 
         const roll_number =
             String(
-                req.body.roll_number || "N/A"
-            ).trim();
+                req.body.roll_number || ""
+            ).trim() || "N/A";
 
 
-        const contact_number =
+        const raw_contact =
             String(
-                req.body.contact_number || "N/A"
+                req.body.contact_number || ""
             ).trim();
+
+        let contact_number = "N/A";
+        if (raw_contact && raw_contact !== "N/A") {
+            const normalized = normalizeContactNumber(raw_contact);
+            if (!normalized) {
+                return res.status(400).json({
+                    error: "Please provide a valid 10-digit contact number."
+                });
+            }
+            contact_number = normalized;
+        }
 
 
         // =================================================
@@ -1286,42 +1316,209 @@ router.use(
 
 
 // =====================================================
-// DELETE ITEM (FOR TEST CLEANUP / RECORD DELETION)
+// DELETE ITEM (SECURE: OWNERSHIP VERIFICATION OR ADMIN)
 // =====================================================
 
 router.delete(
     "/item/:id",
+    express.json(),
     function(req, res) {
+        const rawId = String(req.params.id || "").trim();
 
-        const id = req.params.id;
-        const targetTable = req.query.type === "found" ? "found_items" : "lost_items";
+        // 1. Validate numeric ID
+        if (!/^\d+$/.test(rawId)) {
+            return res.status(400).json({
+                error: "Invalid item ID. Must be a numeric identifier."
+            });
+        }
 
-        const deleteQuery = "DELETE FROM `" + LF_DB + "`.`" + targetTable + "` WHERE serial_number = ? LIMIT 1";
+        const numericId = parseInt(rawId, 10);
+        const requestedType = req.query.type ? String(req.query.type).trim().toLowerCase() : "";
 
-        req.db.query(
-            deleteQuery,
-            [id],
-            function(err, result) {
+        // Admin authorization check
+        const adminToken = req.headers["x-admin-token"] || (req.headers["authorization"] ? req.headers["authorization"].replace(/^Bearer\s+/i, "").trim() : "");
+        const expectedAdmin = process.env.ADMIN_TOKEN || process.env.LF_ADMIN_KEY;
+        const isAdmin = Boolean(expectedAdmin && adminToken && adminToken === expectedAdmin);
 
+        // Reporter ownership verification
+        const verifyContact = (req.body && req.body.contact_number)
+            || req.query.contact
+            || req.headers["x-reporter-contact"]
+            || "";
+        const verifyRoll = (req.body && req.body.roll_number)
+            || req.query.roll
+            || req.headers["x-reporter-roll"]
+            || "";
+
+        if (!isAdmin && !verifyContact && !verifyRoll) {
+            return res.status(401).json({
+                error: "Authorization required. Please provide the contact number or roll number used when reporting this item."
+            });
+        }
+
+        // Determine candidate tables
+        const tablesToTry = [];
+        if (requestedType === "found") {
+            tablesToTry.push("found_items", "lost_items");
+        } else if (requestedType === "lost") {
+            tablesToTry.push("lost_items", "found_items");
+        } else {
+            tablesToTry.push("lost_items", "found_items");
+        }
+
+        function findRecord(tableIndex) {
+            if (tableIndex >= tablesToTry.length) {
+                return res.status(404).json({
+                    error: "Item not found or already deleted."
+                });
+            }
+
+            const currentTable = tablesToTry[tableIndex];
+            const selectQuery = "SELECT serial_number, roll_number, contact_number, image, status FROM `" + LF_DB + "`.`" + currentTable + "` WHERE serial_number = ? LIMIT 1";
+
+            req.db.query(selectQuery, [numericId], function(err, rows) {
                 if (err) {
-                    console.error("Delete error:", err);
+                    console.error("Lookup error during delete:", err);
                     return res.status(500).json({
-                        error: "Could not delete item",
+                        error: "Could not lookup item for deletion",
                         details: err.message
                     });
                 }
 
-                console.log("Deleted item " + id + " from " + targetTable + ", affectedRows: " + result.affectedRows);
+                if (!rows || rows.length === 0) {
+                    return findRecord(tableIndex + 1);
+                }
 
-                res.json({
-                    success: true,
-                    deleted: result.affectedRows,
-                    id: id
+                const record = rows[0];
+
+                // Check authorization if not admin
+                if (!isAdmin) {
+                    let isAuthorized = false;
+
+                    // Match contact number
+                    if (verifyContact && record.contact_number) {
+                        const normInput = normalizeContactNumber(verifyContact);
+                        const normRecord = normalizeContactNumber(record.contact_number);
+                        if (normInput && normRecord && normInput === normRecord) {
+                            isAuthorized = true;
+                        } else if (String(verifyContact).trim() === String(record.contact_number).trim()) {
+                            isAuthorized = true;
+                        }
+                    }
+
+                    // Match roll number
+                    if (!isAuthorized && verifyRoll && record.roll_number) {
+                        const rollInput = String(verifyRoll).trim().toLowerCase();
+                        const rollRecord = String(record.roll_number).trim().toLowerCase();
+                        if (rollRecord !== "n/a" && rollRecord !== "" && rollInput === rollRecord) {
+                            isAuthorized = true;
+                        }
+                    }
+
+                    if (!isAuthorized) {
+                        return res.status(403).json({
+                            error: "Verification failed. The provided contact or roll number does not match this record."
+                        });
+                    }
+                }
+
+                // Authorized: clean image safely (stock images are never deleted)
+                cleanupRecordImage(record.image, numericId, currentTable, function() {
+                    const deleteQuery = "DELETE FROM `" + LF_DB + "`.`" + currentTable + "` WHERE serial_number = ? LIMIT 1";
+                    req.db.query(deleteQuery, [numericId], function(delErr, result) {
+                        if (delErr) {
+                            console.error("Delete execution error:", delErr);
+                            return res.status(500).json({
+                                error: "Could not delete item",
+                                details: delErr.message
+                            });
+                        }
+
+                        console.log("Securely deleted item " + numericId + " from " + currentTable);
+
+                        return res.json({
+                            success: true,
+                            message: "Item deleted successfully.",
+                            id: numericId,
+                            table: currentTable
+                        });
+                    });
                 });
+            });
+        }
 
+        // Safe image cleanup helper: Never delete stock images or images used by other records
+        function cleanupRecordImage(imageVal, serialNum, tableName, callback) {
+            if (!imageVal || typeof imageVal !== "string") {
+                return callback();
             }
-        );
 
+            const img = imageVal.trim();
+
+            if (img.startsWith("data:")) {
+                return callback();
+            }
+
+            // Cloudinary image cleanup
+            if (isCloudinaryConfigured() && img.includes("res.cloudinary.com") && img.includes("campusconnect/lost_and_found/")) {
+                try {
+                    const parts = img.split("/campusconnect/lost_and_found/");
+                    if (parts.length > 1) {
+                        const publicIdWithExt = parts[1].split(".")[0];
+                        const publicId = "campusconnect/lost_and_found/" + publicIdWithExt;
+                        cloudinary.uploader.destroy(publicId, function(cErr) {
+                            if (cErr) console.warn("Cloudinary destroy warning:", cErr);
+                            callback();
+                        });
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Cloudinary delete parse error:", e);
+                }
+                return callback();
+            }
+
+            // Local image check
+            const cleanPath = img.replace(/\\/g, "/").replace(/^\/+/, "");
+            const baseFilename = path.basename(cleanPath);
+
+            // NEVER delete stock/static dictionary images!
+            if (vercelStaticImages.has(baseFilename)) {
+                return callback();
+            }
+            for (const stockPath of Object.values(imageMap)) {
+                if (stockPath.includes(baseFilename)) {
+                    return callback();
+                }
+            }
+
+            if (!cleanPath.includes("uploads/items/")) {
+                return callback();
+            }
+
+            // Check if any other record in lost_items or found_items references this exact image
+            const checkQuery = "SELECT (SELECT COUNT(*) FROM `" + LF_DB + "`.`lost_items` WHERE image = ? AND serial_number != ?) + (SELECT COUNT(*) FROM `" + LF_DB + "`.`found_items` WHERE image = ? AND serial_number != ?) AS ref_count";
+
+            req.db.query(checkQuery, [img, serialNum, img, serialNum], function(checkErr, checkRows) {
+                if (!checkErr && checkRows && checkRows[0] && checkRows[0].ref_count > 0) {
+                    console.log("Image referenced by other items; preserving on disk.");
+                    return callback();
+                }
+
+                const fullLocalPath = path.join(uploadFolder, baseFilename);
+                if (fs.existsSync(fullLocalPath)) {
+                    fs.unlink(fullLocalPath, function(uErr) {
+                        if (uErr) console.warn("Local image unlink warning:", uErr);
+                        else console.log("Removed uploaded image file:", baseFilename);
+                        callback();
+                    });
+                } else {
+                    callback();
+                }
+            });
+        }
+
+        findRecord(0);
     }
 );
 
