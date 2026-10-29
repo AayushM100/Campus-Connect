@@ -28,7 +28,11 @@
         rel="stylesheet"
         href="lost.css"
     >
-
+    <!-- Firebase Auth Shared Service -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="../Main/auth/firebase-config.js"></script>
+    <script src="../Main/auth/auth-service.js"></script>
 </head>
 
 
@@ -1649,6 +1653,18 @@
 
 
                     // =================================================
+                    // AUTHENTICATION CHECK
+                    // =================================================
+
+                    if (window.CampusAuth && !window.CampusAuth.isLoggedIn()) {
+                        const doLogin = confirm("You must be signed in to submit a Lost & Found report. Would you like to sign in now?");
+                        if (doLogin) {
+                            window.location.href = "../Main/signin.html?return=" + encodeURIComponent(window.location.href);
+                        }
+                        return;
+                    }
+
+                    // =================================================
                     // VALIDATION
                     // =================================================
 
@@ -1775,8 +1791,16 @@
 
 
                         // =================================================
-                        // SEND TO EXPRESS
+                        // SEND TO EXPRESS (WITH AUTH TOKEN)
                         // =================================================
+
+                        const authHeaders = {};
+                        if (window.CampusAuth && window.CampusAuth.getIdToken) {
+                            const token = await window.CampusAuth.getIdToken();
+                            if (token) {
+                                authHeaders["Authorization"] = "Bearer " + token;
+                            }
+                        }
 
                         const response =
                             await fetch(
@@ -1785,6 +1809,9 @@
 
                                     method:
                                         "POST",
+
+                                    headers:
+                                        authHeaders,
 
                                     body:
                                         formData

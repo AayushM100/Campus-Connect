@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 data class LostFoundItem(
     @SerializedName("serial_number") val serialNumber: Long,
+    @SerializedName("user_uid") val userUid: String? = null,
     @SerializedName("roll_number") val rollNumber: String? = null,
     @SerializedName("item_name") val itemName: String,
     @SerializedName("location") val location: String,
@@ -14,6 +15,9 @@ data class LostFoundItem(
     @SerializedName("image") val image: String? = null,
     @SerializedName("created_at") val createdAt: String? = null
 ) {
+    val id: Long
+        get() = serialNumber
+
     val isLost: Boolean
         get() = status.equals("lost", ignoreCase = true)
 

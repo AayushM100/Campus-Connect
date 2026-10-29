@@ -1,5 +1,6 @@
 package com.sahiljadhav.campusconnect.data.api
 
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -11,6 +12,22 @@ object ApiClient {
     const val CANTEEN_BASE_URL = "https://campus-connect-1-0q94.onrender.com/"
     const val LOST_FOUND_BASE_URL = "https://campus-connect-4n2t.onrender.com/"
 
+    @Volatile
+    var currentAuthToken: String? = null
+
+    private val authInterceptor = Interceptor { chain ->
+        val original = chain.request()
+        val token = currentAuthToken
+        if (!token.isNullOrBlank()) {
+            val authenticated = original.newBuilder()
+                .header("Authorization", "Bearer $token")
+                .build()
+            chain.proceed(authenticated)
+        } else {
+            chain.proceed(original)
+        }
+    }
+
     private val okHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -20,6 +37,7 @@ object ApiClient {
             .readTimeout(35, TimeUnit.SECONDS)
             .writeTimeout(35, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .build()
     }
@@ -71,5 +89,13 @@ object ApiClient {
 
     val lostFoundFallbackApi: LostFoundApiService by lazy {
         lostFoundFallbackRetrofit.create(LostFoundApiService::class.java)
+    }
+
+    val authApi: AuthApiService by lazy {
+        canteenRetrofit.create(AuthApiService::class.java)
+    }
+
+    val authFallbackApi: AuthApiService by lazy {
+        canteenFallbackRetrofit.create(AuthApiService::class.java)
     }
 }

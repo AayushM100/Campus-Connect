@@ -518,7 +518,11 @@ function closeCheckoutOverlay() {
 
 function getSavedCheckoutProfile() {
     try {
-        return JSON.parse(localStorage.getItem(CHECKOUT_PROFILE_KEY) || "{}") || {};
+        const saved = JSON.parse(localStorage.getItem(CHECKOUT_PROFILE_KEY) || "{}") || {};
+        if (!saved.studentName && localStorage.getItem("studentName")) {
+            saved.studentName = localStorage.getItem("studentName");
+        }
+        return saved;
     } catch (error) {
         return {};
     }
@@ -632,9 +636,18 @@ function displayCheckoutError(overlay, message) {
 }
 
 async function postCheckoutRequest(path, data) {
+    const headers = { "Content-Type": "application/json" };
+    if (window.CampusAuth && window.CampusAuth.getIdToken) {
+        try {
+            const token = await window.CampusAuth.getIdToken();
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+        } catch (e) {
+            console.warn("Could not retrieve auth token for checkout:", e);
+        }
+    }
     const response = await fetch(`${CHECKOUT_API_URL}${path}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers,
         body: JSON.stringify(data)
     });
     const body = await response.json().catch(function () { return {}; });

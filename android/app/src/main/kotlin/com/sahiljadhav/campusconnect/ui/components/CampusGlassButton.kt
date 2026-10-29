@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -27,8 +28,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sahiljadhav.campusconnect.ui.theme.BrandAmber
 import com.sahiljadhav.campusconnect.ui.theme.BrandOrange
 import com.sahiljadhav.campusconnect.ui.theme.BrandOrangeDark
@@ -44,6 +47,35 @@ enum class GlassButtonVariant {
  * Combines translucent gradient layers, a glass reflection highlight border,
  * subtle elevation, and spring-based press scaling.
  */
+@Composable
+fun CampusGlassButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    variant: GlassButtonVariant = GlassButtonVariant.BRAND_ORANGE,
+    shape: Shape = RoundedCornerShape(16.dp),
+    minHeight: Dp = 50.dp,
+    enabled: Boolean = true
+) {
+    CampusGlassButton(
+        onClick = onClick,
+        modifier = modifier,
+        variant = variant,
+        shape = shape,
+        minHeight = minHeight,
+        enabled = enabled
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = Color.White
+            )
+        )
+    }
+}
+
 @Composable
 fun CampusGlassButton(
     onClick: () -> Unit,

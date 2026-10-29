@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>CampusConnect — Dashboard</title>
-    <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="tokens.css">
   <script>
     (function() {
       var t = localStorage.getItem('campusConnectTheme') || localStorage.getItem('campusBitesTheme') || (localStorage.getItem('darkMode') === 'true' ? 'dark' : null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -19,8 +19,13 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="navbar.css">
   <link rel="icon" type="image/png" href="../logo.png">
-  <!-- Lucide icons added (same library used on index.html) -->
+  <!-- Lucide icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase Auth Web SDK & CampusAuth -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="auth/firebase-config.js"></script>
+  <script src="auth/auth-service.js"></script>
 </head>
 <body class="dashboard-page">
 
@@ -34,15 +39,17 @@
       <a href="dashboard.html" class="active">Dashboard</a>
       <a href="contact.html">Contact</a>
       <button type="button" class="cc-theme-toggle" aria-label="Toggle theme"></button>
-      <a href="signin.html" class="nav-signin">Sign In</a>
+      <div id="nav-auth-container" style="display: inline-flex; align-items: center;">
+        <a href="signin.html" class="nav-signin" id="nav-signin-link">Sign In</a>
+      </div>
     </nav>
   </header>
 
-  <!-- NEW: Dark navy hero banner replaces the plain white welcome section -->
+  <!-- Dark navy hero banner -->
   <div class="dash-hero">
     <div class="dash-hero-inner container">
       <div>
-        <p class="dashboard-label">CampusConnect Dashboard</p>
+        <p class="dashboard-label">CampusConnect Student Portal</p>
         <h1 id="dashboard-greeting">Good morning, Student 👋</h1>
         <p class="dash-hero-sub">Here's what's happening around campus today.</p>
       </div>
@@ -54,6 +61,17 @@
   </div>
 
   <main>
+
+    <!-- STUDENT ACCOUNT & PROFILE OVERVIEW SECTION -->
+    <section class="container account-section" id="account-section">
+      <!-- RENDERED BY JAVASCRIPT: Logged-in profile or guest card -->
+      <div id="account-card-container">
+        <!-- Default Loading Skeleton -->
+        <div class="account-overview-card" style="text-align: center; padding: 24px;">
+          <p style="color: var(--text-muted); margin: 0;">Connecting to CampusConnect account services...</p>
+        </div>
+      </div>
+    </section>
 
     <!-- Stat cards: each has a colored accent bar + lucide icon + count-up number -->
     <section class="container dashboard-stats">
@@ -90,7 +108,7 @@
 
     </section>
 
-    <!-- Quick Actions: pill buttons with individual accent colors -->
+    <!-- Quick Actions -->
     <section class="container dashboard-section">
       <div class="section-heading">
         <div><p class="dashboard-label">Quick Access</p><h2>Quick Actions</h2></div>
@@ -120,7 +138,7 @@
       </div>
     </section>
 
-    <!-- Campus Services: cards with icon bubbles + tag labels -->
+    <!-- Campus Services -->
     <section class="container dashboard-section">
       <div class="section-heading">
         <div><p class="dashboard-label">Explore</p><h2>Campus Services</h2></div>
@@ -229,6 +247,65 @@
     </section>
   </main>
 
+  <!-- EDIT PROFILE MODAL DIALOG -->
+  <div id="editProfileModal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h3 id="modalTitle">Edit Student Profile</h3>
+        <button type="button" class="modal-close-btn" id="closeProfileModal" aria-label="Close">×</button>
+      </div>
+      <form id="profileForm">
+        <div class="modal-form-grid">
+          <div class="full-width">
+            <label for="prof_name">Full Name</label>
+            <input type="text" id="prof_name" name="full_name" required>
+          </div>
+          <div>
+            <label for="prof_phone">Phone Number</label>
+            <input type="tel" id="prof_phone" name="phone" pattern="[0-9]{10}" placeholder="10-digit mobile" required>
+          </div>
+          <div>
+            <label for="prof_roll">Roll Number</label>
+            <input type="text" id="prof_roll" name="roll_number" placeholder="e.g. 42">
+          </div>
+          <div class="full-width">
+            <label for="prof_dept">Department</label>
+            <select id="prof_dept" name="department" required>
+              <option value="">Select department</option>
+              <option value="Computer Engineering">Computer Engineering</option>
+              <option value="Information Technology">Information Technology</option>
+              <option value="AI & Data Science">AI & Data Science</option>
+              <option value="E&TC">E&TC</option>
+              <option value="Mechanical Engineering">Mechanical Engineering</option>
+              <option value="Civil Engineering">Civil Engineering</option>
+              <option value="Faculty / Staff">Faculty / Staff</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="prof_year">Year</label>
+            <select id="prof_year" name="year">
+              <option value="">Select Year</option>
+              <option value="First Year (FE)">First Year (FE)</option>
+              <option value="Second Year (SE)">Second Year (SE)</option>
+              <option value="Third Year (TE)">Third Year (TE)</option>
+              <option value="Final Year (BE)">Final Year (BE)</option>
+              <option value="Staff / Alumni">Staff / Alumni</option>
+            </select>
+          </div>
+          <div>
+            <label for="prof_div">Division</label>
+            <input type="text" id="prof_div" name="division" placeholder="e.g. A, B, C">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancelProfileBtn">Cancel</button>
+          <button type="submit" class="signin-btn" style="width: auto; padding: 10px 24px;" id="saveProfileBtn">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <footer class="contact site-footer">
     <div class="footer-main">
       <div class="footer-brand">
@@ -256,12 +333,422 @@
     </div>
   </footer>
 
-    <script src="theme.js"></script>
+  <script src="theme.js"></script>
   <script src="vendor/gsap.min.js"></script>
   <script src="vendor/ScrollTrigger.min.js"></script>
   <script src="gsap-motion.js"></script>
   <script src="script.js"></script>
-  <!-- Initialize lucide icons after the page loads -->
   <script>lucide.createIcons();</script>
+
+  <!-- CAMPUSCONNECT ACCOUNT & PROFILE CONTROLLER -->
+  <script>
+    (function() {
+      let currentStudentProfile = null;
+      let activeActivityTab = "reports";
+
+      const navAuthContainer = document.getElementById("nav-auth-container");
+      const accountContainer = document.getElementById("account-card-container");
+      const greetingEl = document.getElementById("dashboard-greeting");
+      const modal = document.getElementById("editProfileModal");
+      const profileForm = document.getElementById("profileForm");
+
+      function formatInitials(name) {
+        if (!name) return "CC";
+        const parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return name.slice(0, 2).toUpperCase();
+      }
+
+      function escapeText(str) {
+        if (!str) return "";
+        return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      function renderGuestView() {
+        greetingEl.textContent = "Welcome, Student 👋";
+        navAuthContainer.innerHTML = '<a href="signin.html" class="nav-signin">Sign In</a>';
+        accountContainer.innerHTML = `
+          <div class="account-overview-card" style="border-left: 4px solid var(--primary);">
+            <div class="account-top">
+              <div class="account-user-info">
+                <div class="account-avatar" style="background: #94a3b8;">?</div>
+                <div class="account-names">
+                  <h2>Guest Explorer</h2>
+                  <p>Browsing public notices, canteen menus &amp; lost items.</p>
+                </div>
+              </div>
+              <div>
+                <a href="signin.html" class="signin-btn" style="display: inline-block; padding: 11px 22px; width: auto; font-size: 14px;">Sign In to Your Account →</a>
+              </div>
+            </div>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+      }
+
+      async function renderAuthenticatedView(user) {
+        const displayName = user.displayName || localStorage.getItem("studentName") || "Student";
+        greetingEl.textContent = `Welcome back, ${displayName} 👋`;
+
+        // Navbar user badge
+        navAuthContainer.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-weight: 600; font-size: 14px;">${escapeText(displayName)}</span>
+            <button type="button" class="btn-signout" id="nav-signout-btn" style="padding: 6px 12px; font-size: 12px;">Sign Out</button>
+          </div>
+        `;
+        document.getElementById("nav-signout-btn").onclick = function() {
+          CampusAuth.signOut();
+        };
+
+        // Fetch MySQL user profile
+        let profile = null;
+        let completionPercent = 0;
+        try {
+          const profileRes = await CampusAuth.fetchProfile();
+          if (profileRes && profileRes.user) {
+            profile = profileRes.user;
+            completionPercent = profileRes.completion_percentage || 0;
+            currentStudentProfile = profile;
+          }
+        } catch (e) {
+          console.warn("Could not load backend profile:", e);
+        }
+
+        const fullName = (profile && profile.full_name) || displayName;
+        const initials = formatInitials(fullName);
+        const email = user.email || (profile && profile.email) || "";
+        const dept = (profile && profile.department) || "Not set";
+        const roll = (profile && profile.roll_number) || "Not set";
+        const phone = (profile && profile.phone) || "Not set";
+        const year = (profile && profile.year) || "Not set";
+        const div = (profile && profile.division) || "Not set";
+
+        accountContainer.innerHTML = `
+          <!-- Account Overview Card -->
+          <div class="account-overview-card">
+            <div class="account-top">
+              <div class="account-user-info">
+                <div class="account-avatar">${initials}</div>
+                <div class="account-names">
+                  <h2>${escapeText(fullName)}</h2>
+                  <p>${escapeText(email)}</p>
+                </div>
+              </div>
+              <div class="account-actions">
+                <button type="button" class="btn-secondary" id="edit-profile-btn">
+                  <i data-lucide="edit-3" style="width: 15px; height: 15px;"></i> Edit Profile
+                </button>
+                <button type="button" class="btn-signout" id="card-signout-btn">Sign Out</button>
+              </div>
+            </div>
+
+            <!-- Profile Completion Meter -->
+            <div class="profile-meter-box">
+              <div class="profile-meter-header">
+                <span>Profile Completion</span>
+                <span id="profile-percent-badge">${completionPercent}% Complete</span>
+              </div>
+              <div class="profile-progress-bar">
+                <div class="profile-progress-fill" style="width: ${completionPercent}%"></div>
+              </div>
+              <p class="profile-meter-hint">
+                ${completionPercent === 100 ? "✨ Your profile is complete! Checkouts and reports will be pre-filled automatically." : "Complete all fields (Name, Phone, Department, Roll No, Year, Division) for quick 1-tap checkout."}
+              </p>
+            </div>
+
+            <!-- Attributes Badges -->
+            <div class="account-badges-grid">
+              <div class="badge-item">
+                <span>Department</span>
+                <strong>${escapeText(dept)}</strong>
+              </div>
+              <div class="badge-item">
+                <span>Roll Number</span>
+                <strong>${escapeText(roll)}</strong>
+              </div>
+              <div class="badge-item">
+                <span>Year &amp; Division</span>
+                <strong>${escapeText(year)} ${div !== "Not set" ? "• " + escapeText(div) : ""}</strong>
+              </div>
+              <div class="badge-item">
+                <span>Contact Phone</span>
+                <strong>${escapeText(phone)}</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Account Activity Card: My Reports & My Orders -->
+          <div class="account-activity-card">
+            <div class="activity-tab-nav">
+              <button type="button" class="act-tab-btn active" id="tab-act-reports">
+                My Reports (<span id="count-reports">0</span>)
+              </button>
+              <button type="button" class="act-tab-btn" id="tab-act-orders">
+                My Canteen Orders (<span id="count-orders">0</span>)
+              </button>
+            </div>
+
+            <div id="act-content-container">
+              <div class="act-list-container" id="act-reports-list">
+                <div class="act-empty"><p>Loading your reports...</p></div>
+              </div>
+              <div class="act-list-container" id="act-orders-list" style="display: none;">
+                <div class="act-empty"><p>Loading your orders...</p></div>
+              </div>
+            </div>
+
+            <!-- Danger Zone: Delete Account -->
+            <div class="account-danger-zone">
+              <div>
+                <strong>Account &amp; Data Deletion</strong>
+                <p>Permanently remove your profile, favourites, and reports from the database.</p>
+              </div>
+              <button type="button" class="btn-danger-outline" id="delete-account-btn">Delete Account</button>
+            </div>
+          </div>
+        `;
+
+        if (window.lucide) lucide.createIcons();
+
+        // Bind Edit Profile Button
+        document.getElementById("edit-profile-btn").onclick = function() {
+          openEditModal();
+        };
+
+        // Bind Card Sign Out Button
+        document.getElementById("card-signout-btn").onclick = function() {
+          CampusAuth.signOut();
+        };
+
+        // Bind Activity Tab Buttons
+        const tabReports = document.getElementById("tab-act-reports");
+        const tabOrders = document.getElementById("tab-act-orders");
+        const listReports = document.getElementById("act-reports-list");
+        const listOrders = document.getElementById("act-orders-list");
+
+        tabReports.onclick = function() {
+          tabReports.classList.add("active");
+          tabOrders.classList.remove("active");
+          listReports.style.display = "flex";
+          listOrders.style.display = "none";
+        };
+
+        tabOrders.onclick = function() {
+          tabOrders.classList.add("active");
+          tabReports.classList.remove("active");
+          listReports.style.display = "none";
+          listOrders.style.display = "flex";
+        };
+
+        // Bind Delete Account
+        document.getElementById("delete-account-btn").onclick = async function() {
+          const confirmed = confirm("Are you sure you want to delete your CampusConnect account? This action cannot be undone.");
+          if (confirmed) {
+            try {
+              await CampusAuth.deleteAccount();
+              alert("Your account data has been deleted.");
+              window.location.reload();
+            } catch (err) {
+              alert("Failed to delete account: " + err.message);
+            }
+          }
+        };
+
+        // Fetch My Reports
+        loadMyReports();
+        // Fetch My Orders
+        loadMyOrders();
+      }
+
+      async function loadMyReports() {
+        const container = document.getElementById("act-reports-list");
+        const countBadge = document.getElementById("count-reports");
+        if (!container) return;
+
+        try {
+          const res = await CampusAuth.fetchMyReports();
+          const lostList = (res && res.lost) || [];
+          const foundList = (res && res.found) || [];
+          const allReports = [...lostList, ...foundList];
+          if (countBadge) countBadge.textContent = allReports.length;
+
+          if (!allReports.length) {
+            container.innerHTML = `
+              <div class="act-empty">
+                <i data-lucide="inbox" style="width: 38px; height: 38px; margin-bottom: 8px; opacity: 0.5;"></i>
+                <p>You haven't reported any lost or found items yet.</p>
+                <a href="../lost_and_found/lost.html#report" class="btn-secondary">Report an Item →</a>
+              </div>
+            `;
+            if (window.lucide) lucide.createIcons();
+            return;
+          }
+
+          container.innerHTML = allReports.map(item => {
+            const statusClass = (item.status || "").toLowerCase() === "found" ? "found" : "lost";
+            const imageUrl = item.image || "../logo.png";
+            return `
+              <div class="act-item-card" id="report-item-${item.serial_number}">
+                <div class="act-item-left">
+                  <img src="${imageUrl}" class="act-item-img" alt="Item photo" onerror="this.src='../logo.png'">
+                  <div class="act-item-info">
+                    <h4>${escapeText(item.item_name)}</h4>
+                    <p>📍 ${escapeText(item.location || "Campus")} • ${new Date(item.created_at || Date.now()).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="act-status-badge ${statusClass}">${item.status || "lost"}</span>
+                  <button type="button" class="btn-delete-report" onclick="window.handleDeleteReport(${item.serial_number}, '${item.status}')">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join("");
+          if (window.lucide) lucide.createIcons();
+        } catch (e) {
+          container.innerHTML = `<div class="act-empty"><p>Could not load your reports. ${escapeText(e.message)}</p></div>`;
+        }
+      }
+
+      window.handleDeleteReport = async function(id, type) {
+        if (!confirm("Are you sure you want to delete this report?")) return;
+        try {
+          await CampusAuth.deleteReport(id, type);
+          const el = document.getElementById(`report-item-${id}`);
+          if (el) el.remove();
+          // Update count
+          const countBadge = document.getElementById("count-reports");
+          if (countBadge) {
+            const cur = parseInt(countBadge.textContent) || 1;
+            countBadge.textContent = Math.max(0, cur - 1);
+          }
+        } catch (err) {
+          alert("Error deleting report: " + err.message);
+        }
+      };
+
+      async function loadMyOrders() {
+        const container = document.getElementById("act-orders-list");
+        const countBadge = document.getElementById("count-orders");
+        if (!container) return;
+
+        try {
+          const res = await CampusAuth.fetchMyOrders();
+          const orders = (res && res.orders) || [];
+          if (countBadge) countBadge.textContent = orders.length;
+
+          if (!orders.length) {
+            container.innerHTML = `
+              <div class="act-empty">
+                <i data-lucide="shopping-bag" style="width: 38px; height: 38px; margin-bottom: 8px; opacity: 0.5;"></i>
+                <p>No past canteen orders yet.</p>
+                <a href="../canteen/index.html" class="btn-secondary">Browse Menu →</a>
+              </div>
+            `;
+            if (window.lucide) lucide.createIcons();
+            return;
+          }
+
+          container.innerHTML = orders.map(o => {
+            const statusClass = (o.status || "").toLowerCase() === "paid" ? "paid" : "pending";
+            const itemsSummary = (o.items || []).map(i => `${i.quantity}x ${escapeText(i.item_name)}`).join(", ") || "Food items";
+            return `
+              <div class="act-item-card">
+                <div class="act-item-left">
+                  <div class="stat-icon" style="width: 44px; height: 44px; border-radius: 10px; font-size: 16px;">
+                    <i data-lucide="utensils"></i>
+                  </div>
+                  <div class="act-item-info">
+                    <h4>${escapeText(o.canteen || "Cafeteria")} — ₹${Number(o.total_amount).toFixed(2)}</h4>
+                    <p>${itemsSummary} • ${new Date(o.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div>
+                  <span class="act-status-badge ${statusClass}">${o.status}</span>
+                </div>
+              </div>
+            `;
+          }).join("");
+          if (window.lucide) lucide.createIcons();
+        } catch (e) {
+          container.innerHTML = `<div class="act-empty"><p>Could not load past orders. ${escapeText(e.message)}</p></div>`;
+        }
+      }
+
+      function openEditModal() {
+        if (!currentStudentProfile) {
+          currentStudentProfile = {
+            full_name: localStorage.getItem("studentName") || "",
+            phone: "",
+            department: "",
+            roll_number: "",
+            year: "",
+            division: ""
+          };
+        }
+        document.getElementById("prof_name").value = currentStudentProfile.full_name || "";
+        document.getElementById("prof_phone").value = currentStudentProfile.phone || "";
+        document.getElementById("prof_roll").value = currentStudentProfile.roll_number || "";
+        document.getElementById("prof_dept").value = currentStudentProfile.department || "";
+        document.getElementById("prof_year").value = currentStudentProfile.year || "";
+        document.getElementById("prof_div").value = currentStudentProfile.division || "";
+        modal.style.display = "flex";
+      }
+
+      function closeEditModal() {
+        modal.style.display = "none";
+      }
+
+      document.getElementById("closeProfileModal").onclick = closeEditModal;
+      document.getElementById("cancelProfileBtn").onclick = closeEditModal;
+      modal.onclick = function(e) {
+        if (e.target === modal) closeEditModal();
+      };
+
+      profileForm.onsubmit = async function(e) {
+        e.preventDefault();
+        const saveBtn = document.getElementById("saveProfileBtn");
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+
+        const updateData = {
+          full_name: document.getElementById("prof_name").value.trim(),
+          phone: document.getElementById("prof_phone").value.trim(),
+          department: document.getElementById("prof_dept").value.trim(),
+          roll_number: document.getElementById("prof_roll").value.trim(),
+          year: document.getElementById("prof_year").value.trim(),
+          division: document.getElementById("prof_div").value.trim()
+        };
+
+        try {
+          await CampusAuth.updateProfile(updateData);
+          localStorage.setItem("studentName", updateData.full_name);
+          closeEditModal();
+          // Re-render authenticated view with updated data
+          if (CampusAuth.getCurrentUser()) {
+            renderAuthenticatedView(CampusAuth.getCurrentUser());
+          }
+        } catch (err) {
+          alert("Error saving profile: " + err.message);
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save Profile";
+        }
+      };
+
+      // Listen for Firebase Auth changes
+      CampusAuth.onAuthStateChanged(function(user) {
+        if (user) {
+          renderAuthenticatedView(user);
+        } else {
+          renderGuestView();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
