@@ -1632,9 +1632,9 @@ router.delete(
 
                     // Match roll number
                     if (!isAuthorized && verifyRoll && record.roll_number) {
-                        const cleanInput = String(verifyRoll).replace(/[\s\-_.]/g, "").toLowerCase();
-                        const cleanRecord = String(record.roll_number || "").replace(/[\s\-_.]/g, "").toLowerCase();
-                        if (cleanRecord && cleanRecord !== "na" && cleanRecord !== "notprovided" && cleanInput === cleanRecord) {
+                        const cleanInput = String(verifyRoll).replace(/[^a-z0-9]/gi, "").toLowerCase();
+                        const cleanRecord = String(record.roll_number || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+                        if (cleanRecord && cleanRecord !== "na" && cleanRecord !== "notprovided" && cleanRecord !== "null" && cleanInput === cleanRecord) {
                             isAuthorized = true;
                             authReason = "roll_match";
                         }
@@ -1644,9 +1644,10 @@ router.delete(
                 if (!isAuthorized) {
                     // Check if this item is legacy unowned and has NO valid contact or roll credentials
                     const normRecContact = normalizeContactNumber(record.contact_number);
-                    const hasValidContact = Boolean(normRecContact);
-                    const cleanRecRoll = String(record.roll_number || "").replace(/[\s\-_.]/g, "").toLowerCase();
-                    const hasValidRoll = Boolean(cleanRecRoll && cleanRecRoll !== "na" && cleanRecRoll !== "notprovided");
+                    const rawRecContact = String(record.contact_number || "").trim().toLowerCase();
+                    const hasValidContact = Boolean(normRecContact || (rawRecContact && rawRecContact !== "n/a" && rawRecContact !== "not provided" && rawRecContact.replace(/\D/g, "").length >= 7));
+                    const cleanRecRoll = String(record.roll_number || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+                    const hasValidRoll = Boolean(cleanRecRoll && cleanRecRoll !== "na" && cleanRecRoll !== "notprovided" && cleanRecRoll !== "null");
 
                     if (!record.user_uid && !hasValidContact && !hasValidRoll) {
                         return res.status(403).json({

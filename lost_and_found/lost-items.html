@@ -191,6 +191,7 @@
                 <div class="cc-modal-description" id="detailsModalDesc">
                     Description
                 </div>
+                <div id="detailsModalLegacyNotice" style="display: none; margin-bottom: 16px; padding: 12px 14px; background: rgba(230, 57, 70, 0.08); border-left: 3px solid #E63946; border-radius: 6px; font-size: 13px; color: var(--text-body); line-height: 1.5;"></div>
                 <div class="cc-contact-card">
                     <div class="cc-contact-header">
                         🔒 Reporter Verification &amp; Contact
@@ -234,10 +235,10 @@
                 <button type="button" class="cc-modal-close-btn" id="closeDeleteModalBtn" aria-label="Cancel">✕</button>
             </div>
             <div class="cc-modal-body">
-                <p style="font-size: 14px; color: var(--text-body); margin: 0;">
+                <p id="deletePromptText" style="font-size: 14px; color: var(--text-body); margin: 0; line-height: 1.5;">
                     To securely delete this report, please enter the <strong>Contact Number</strong> or <strong>Roll Number</strong> provided when reporting.
                 </p>
-                <div class="cc-verify-input-group">
+                <div class="cc-verify-input-group" id="deleteVerifyInputGroup">
                     <label for="deleteVerifyInput">Verification Credential</label>
                     <input type="text" id="deleteVerifyInput" placeholder="Enter contact or roll number" autocomplete="off">
                 </div>
@@ -687,6 +688,17 @@
             const rollEl = document.getElementById("detailsModalRoll");
             if (rollEl) {
                 rollEl.textContent = (item.roll_number && item.roll_number !== "N/A") ? item.roll_number : "Not provided";
+            }
+
+            const isLegacy = (!item.user_uid && (!item.roll_number || item.roll_number === "N/A" || !item.roll_number.trim()) && (!item.contact_number || item.contact_number === "N/A" || !item.contact_number.trim()));
+            const legacyNoticeEl = document.getElementById("detailsModalLegacyNotice");
+            if (legacyNoticeEl) {
+                if (isLegacy) {
+                    legacyNoticeEl.innerHTML = "ℹ️ <strong>Legacy Report:</strong> This report was filed before verification requirements. For administrative removal, please visit the <strong>Campus Help Desk (Library 1st Floor)</strong> or email <a href=\"mailto:admin@campusconnect.edu?subject=Report%20Removal%20Request%20%23" + encodeURIComponent(item.serial_number || "") + "\" style=\"color: #0077B6; font-weight: 600;\">admin@campusconnect.edu</a>.";
+                    legacyNoticeEl.style.display = "block";
+                } else {
+                    legacyNoticeEl.style.display = "none";
+                }
             }
 
             const contactEl = document.getElementById("detailsModalContact");

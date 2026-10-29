@@ -28,3 +28,9 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 .vercel
+
+# Project specific ignores
+lost_and_found_backend/
+scratch/
+*.pdf
+lost_and_found/uploads/items/roller.jpeg
